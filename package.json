@@ -1,0 +1,24 @@
+{
+  "name": "apm",
+  "version": "0.1.1",
+  "description": "Argo package manager",
+  "main": "./lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Atlan",
+  "license": "MIT",
+  "dependencies": {
+    "@kubernetes/client-node": "^0.12.0",
+    "bluebird": "^3.7.2",
+    "js-yaml": "^3.14.0",
+    "npm-package-arg": "^8.0.1",
+    "npm-remote-ls": "^1.3.2",
+    "system-commands": "^1.1.7",
+    "yargs": "^15.4.1"
+  },
+  "bin": {
+    "apm": "./bin/install.js"
+  },
+  "preferGlobal": true
+}
