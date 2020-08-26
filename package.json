@@ -1,6 +1,6 @@
 {
   "name": "argopm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
@@ -18,7 +18,7 @@
     "yargs": "^15.4.1"
   },
   "bin": {
-    "apm": "./bin/install.js"
+    "argopm": "./bin/install.js"
   },
   "preferGlobal": true
 }
