@@ -1,5 +1,5 @@
 {
-  "name": "apm",
+  "name": "argopm",
   "version": "0.1.0",
   "description": "Argo package manager",
   "main": "./lib/index.js",
