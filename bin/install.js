@@ -45,7 +45,7 @@ yargs.command({
         desc: 'Get info of the installed package',
         handler: (argv) => {
             info(argv.namespace, argv.package).then(argoPackage => {
-                console.log(argoPackage.info);
+                console.log(argoPackage.toString());
             }).catch(error => {
                 console.error(error);
             });
