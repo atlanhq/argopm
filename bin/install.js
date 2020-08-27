@@ -3,6 +3,8 @@ const install = require('../lib/install.js').install;
 const list = require('../lib/index.js').list;
 const uninstall = require('../lib/index').uninstall;
 const init = require('../lib/init').init;
+const info = require('../lib/index').info;
+
 const yargs = require('yargs');
 
 const { cyan, dim, bright } = require ('ansicolor')
@@ -35,6 +37,17 @@ yargs.command({
                 console.log(`Successfully installed package ${argv.package}`)
             }).catch(error => {
                 console.error(error)
+            });
+        }
+    })
+    .command({
+        command: 'info <package>',
+        desc: 'Get info of the installed package',
+        handler: (argv) => {
+            info(argv.namespace, argv.package).then(argoPackage => {
+                console.log(argoPackage.info);
+            }).catch(error => {
+                console.error(error);
             });
         }
     })
@@ -75,7 +88,7 @@ yargs.command({
         handler: (argv) => {
             list(argv.namespace).then(argoPackages => {
                 if (argoPackages.length === 0) {
-                    console.log("No Argo packages installed");
+                    console.log("No packages found");
                     return
                 }
 
