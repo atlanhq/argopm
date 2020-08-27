@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-var argoInstall = require('../lib/index.js').argoInstall;
+var install = require('../lib/install.js').install;
 const listInstalledPackages = require('../lib/index.js').listInstalledPackages;
 const info = require('../lib/index').info;
 const deletePackage = require('../lib/index').deletePackage;
@@ -18,12 +18,18 @@ require('yargs')
         aliases: ['i'],
         desc: 'Install an Argo package',
         handler: (argv) => {
-            argoInstall(argv.package, argv.namespace, argv.registry).then(_ => {
+            install(argv.package, argv.registry, argv.namespace, argv.save).then(_ => {
                 console.log(`Successfully installed package ${argv.package}`)
             }).catch(error => {
                 console.error(error)
             });
         }
+    })
+    .option('save', {
+        alias: 's',
+        type: 'boolean',
+        description: 'Save the package',
+        default: true
     })
     .example('$0 install <package>@version -n argo -r https://marketplace.atlan.com', 'Installs the package from the specified registry in the procided namespace')
     .alias('n', 'namespace')
