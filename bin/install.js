@@ -3,6 +3,8 @@ var argoInstall = require('../lib/index.js').argoInstall;
 const listInstalledPackages = require('../lib/index.js').listInstalledPackages;
 const info = require('../lib/index').info;
 const deletePackage = require('../lib/index').deletePackage;
+const initPackage = require('../lib/init').initPackage;
+
 const { cyan, dim, bright } = require ('ansicolor')
 const asTable = require('as-table').configure({
     title: x => bright(x),
@@ -64,6 +66,23 @@ require('yargs')
                 console.error(error)
             });
         }
+    })
+    .command({
+        command: 'init',
+        desc: 'Init an Argo package in the current directory',
+        handler: (argv) => {
+            initPackage(argv.force).then(_ => {
+                console.log(`Successfully initialised package`)
+            }).catch(error => {
+                console.error(error)
+            });
+        }
+    })
+    .option('force', {
+        alias: 'f',
+        type: 'boolean',
+        description: 'Force run the command',
+        default: false
     })
     .demandCommand()
     .help()
