@@ -41,11 +41,15 @@ yargs.command({
         }
     })
     .command({
-        command: 'info <package>',
-        desc: 'Get info of the installed package',
+        command: 'info <package> [template]',
+        desc: 'Get info of the installed package or a specific template in the package',
         handler: (argv) => {
             info(argv.namespace, argv.package).then(argoPackage => {
-                console.log(argoPackage.toString());
+                if (argv.template) {
+                    console.log(argoPackage.templateInfo(argv.template));
+                    return
+                }
+                console.log(argoPackage.packageInfo());
             }).catch(error => {
                 console.error(error);
             });
