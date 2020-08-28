@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const install = require('../lib/install.js').install;
+const {install, installGlobal} = require('../lib/install.js');
 const {uninstall, info, run, list} = require('../lib/index');
 const init = require('../lib/init').init;
 
@@ -29,9 +29,22 @@ yargs.command({
                 type: 'boolean',
                 description: 'Force the command',
                 default: true
+            })
+            .option('global', {
+                alias: 'g',
+                type: 'boolean',
+                description: 'Install the package globally',
+                default: false
             }),
         handler: (argv) => {
-            install(argv.package, argv.registry, argv.namespace, argv.save).then(_ => {
+            if (argv.global) {
+                return installGlobal(argv.package, argv.registry, argv.namespace).then(_ => {
+                    console.log(`Successfully installed package ${argv.package} at global level`)
+                }).catch(error => {
+                    console.error(error)
+                });
+            }
+            return install(argv.package, argv.registry, argv.namespace, argv.save).then(_ => {
                 console.log(`Successfully installed package ${argv.package}`)
             }).catch(error => {
                 console.error(error)
