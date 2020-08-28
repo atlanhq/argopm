@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 const install = require('../lib/install.js').install;
-const list = require('../lib/index.js').list;
-const uninstall = require('../lib/index').uninstall;
+const {uninstall, info, run, list} = require('../lib/index');
 const init = require('../lib/init').init;
-const info = require('../lib/index').info;
 
 const yargs = require('yargs');
 
@@ -52,6 +50,24 @@ yargs.command({
                 console.log(argoPackage.packageInfo());
             }).catch(error => {
                 console.error(error);
+            });
+        }
+    })
+    .command({
+        command: 'run <package> [template]',
+        desc: 'Run the package or the package template. Pass in arguments using --',
+        builder: (yargs) => yargs
+            .option('service-account-name', {
+                alias: 'san',
+                type: 'string',
+                description: 'Service Account to run the workflow with.',
+                demandOption: true,
+            }),
+        handler: (argv) => {
+            run(argv.namespace, argv.package, argv.template, argv['service-account-name']).then(_ => {
+                console.log(`Package run successful`);
+            }).catch(error => {
+                console.error(error)
             });
         }
     })
