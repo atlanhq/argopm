@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const {install, installGlobal} = require('../lib/install.js');
+const {initHelp, installHelp} = require('../lib/help');
 const {uninstall, info, run, list} = require('../lib/index');
 const init = require('../lib/init').init;
 
@@ -38,14 +39,16 @@ yargs.command({
             }),
         handler: (argv) => {
             if (argv.global) {
-                return installGlobal(argv.package, argv.registry, argv.namespace).then(_ => {
-                    console.log(`Successfully installed package ${argv.package} at global level`)
+                return installGlobal(argv.package, argv.registry, argv.namespace).then(packageName => {
+                    const re = new RegExp("NAME","g");
+                    console.log(installHelp.replace(re, packageName));
                 }).catch(error => {
                     console.error(error)
                 });
             }
-            return install(argv.package, argv.registry, argv.namespace, argv.save).then(_ => {
-                console.log(`Successfully installed package ${argv.package}`)
+            return install(argv.package, argv.registry, argv.namespace, argv.save).then(packageName => {
+                const re = new RegExp("NAME","g");
+                console.log(installHelp.replace(re, packageName));
             }).catch(error => {
                 console.error(error)
             });
@@ -108,8 +111,9 @@ yargs.command({
                 default: true
             }),
         handler: (argv) => {
-            init(argv.force).then(_ => {
-                console.log(`Successfully initialised package`)
+            init(argv.force).then(packageName => {
+                const re = new RegExp("NAME","g");
+                console.log(initHelp.replace(re, packageName));
             }).catch(error => {
                 console.error(error)
             });
