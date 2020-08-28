@@ -44,10 +44,11 @@ yargs.command({
         handler: (argv) => {
             info(argv.namespace, argv.package).then(argoPackage => {
                 if (argv.template) {
-                    console.log(argoPackage.templateInfo(argv.template));
-                    return
+                    return argoPackage.templateInfo(argv.template)
                 }
-                console.log(argoPackage.packageInfo());
+                return argoPackage.packageInfo();
+            }).then(info => {
+                console.log(info);
             }).catch(error => {
                 console.error(error);
             });
