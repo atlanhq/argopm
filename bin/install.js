@@ -79,9 +79,14 @@ yargs.command({
                 type: 'string',
                 description: 'Service Account to run the workflow with.',
                 demandOption: true,
+            }).option('image-pull-secrets', {
+                alias: 'ips',
+                type: 'string',
+                description: 'Image Pull secrets',
+                demandOption: true,
             }),
         handler: (argv) => {
-            run(argv.namespace, argv.package, argv.template, argv['service-account-name']).then(_ => {
+            run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips']).then(_ => {
                 console.log(`Package run successful`);
             }).catch(error => {
                 console.error(error)
