@@ -59,12 +59,19 @@ yargs.command({
         desc: 'Get info of the installed package or a specific template in the package',
         handler: (argv) => {
             info(argv.namespace, argv.package).then(argoPackage => {
+                if (!argoPackage) {
+                    console.log("Package not found in the Argo cluster")
+                    return
+                }
+
                 if (argv.template) {
                     return argoPackage.templateInfo(argv.template)
                 }
                 return argoPackage.packageInfo();
             }).then(info => {
-                console.log(info);
+                if (info) {
+                    console.log(info);
+                }
             }).catch(error => {
                 console.error(error);
             });
