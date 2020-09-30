@@ -83,7 +83,7 @@ yargs.command({
                 alias: 'ips',
                 type: 'string',
                 description: 'Image Pull secrets',
-                demandOption: true,
+                demandOption: false,
             }),
         handler: (argv) => {
             run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips']).then(_ => {
