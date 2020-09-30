@@ -8,4 +8,4 @@ COPY . /app
 
 RUN npm link
 
-ENTRYPOINT argopm
+ENTRYPOINT ["argopm"]
