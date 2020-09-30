@@ -24,3 +24,16 @@ jobs:
         env: # More info about the environment variables in the README
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Leave this as is, it's automatically generated
           NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }} # You need to set this in your repo settings
+      - uses: actions/checkout@v2.2.0
+        with:
+          fetch-depth: 0
+      - name: 'Get Previous tag'
+        id: previoustag
+        uses: "WyriHaximus/github-action-get-previous-tag@master"
+      - name: Create images
+        run: |
+          docker build --build-arg ACCESS_TOKEN_USR=$GITHUB_ACTOR --build-arg ACCESS_TOKEN_PWD=${{ secrets.MY_PAT }} -t docker.pkg.github.com/$GITHUB_REPOSITORY/${REPOSITORY_NAME}:latest .
+          docker tag docker.pkg.github.com/$GITHUB_REPOSITORY/${REPOSITORY_NAME}:latest docker.pkg.github.com/$GITHUB_REPOSITORY/${REPOSITORY_NAME}:${{ steps.previoustag.outputs.tag }}
+          docker login docker.pkg.github.com -u $GITHUB_ACTOR -p ${{ secrets.MY_PAT }}
+          docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/${REPOSITORY_NAME}:latest
+          docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/${REPOSITORY_NAME}:${{ steps.previoustag.outputs.tag }}
