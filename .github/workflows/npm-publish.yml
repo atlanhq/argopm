@@ -30,6 +30,8 @@ jobs:
       - name: 'Get Previous tag'
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@master"
+      - run:   echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
+        shell: bash
       - name: Create images
         run: |
           docker build --build-arg ACCESS_TOKEN_USR=$GITHUB_ACTOR --build-arg ACCESS_TOKEN_PWD=${{ secrets.MY_PAT }} -t docker.pkg.github.com/$GITHUB_REPOSITORY/${REPOSITORY_NAME}:latest .
