@@ -78,7 +78,7 @@ yargs.command({
                 alias: 'san',
                 type: 'string',
                 description: 'Service Account to run the workflow with.',
-                demandOption: true,
+                demandOption: false,
             }).option('image-pull-secrets', {
                 alias: 'ips',
                 type: 'string',
