@@ -58,7 +58,7 @@ yargs.command({
         command: 'info <package> [template]',
         desc: 'Get info of the installed package or a specific template in the package',
         handler: (argv) => {
-            info(argv.namespace, argv.package).then(argoPackage => {
+            info(argv.namespace, argv.package, argv.cluster).then(argoPackage => {
                 if (argv.template) {
                     return argoPackage.templateInfo(argv.template)
                 }
