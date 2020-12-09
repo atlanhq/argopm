@@ -31,12 +31,6 @@ yargs.command({
                 description: 'Force the command',
                 default: true
             })
-            .option('cluster', {
-                alias: 'c',
-                type: 'boolean',
-                description: 'Install the template at cluster level',
-                default: false
-            })
             .option('global', {
                 alias: 'g',
                 type: 'boolean',
@@ -135,7 +129,7 @@ yargs.command({
         aliases: ['l'],
         desc: 'List all the packages installed in the namespace',
         handler: (argv) => {
-            list(argv.namespace).then(argoPackages => {
+            list(argv.namespace, argv.cluster).then(argoPackages => {
                 if (argoPackages.length === 0) {
                     console.log("No packages found");
                     return
@@ -162,6 +156,12 @@ yargs.command({
         type: 'string',
         description: 'Argo Package Registry',
         default: "https://marketplace.atlan.com"
+    })
+    .option('cluster', {
+        alias: 'c',
+        type: 'boolean',
+        description: 'Install the template at cluster level',
+        default: false
     })
     .demandCommand()
     .wrap(144)
