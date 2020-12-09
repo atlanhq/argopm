@@ -98,7 +98,7 @@ yargs.command({
         aliases: ['u', 'r'],
         desc: 'Uninstall a package. Uninstalls all dependencies associated with the package.',
         handler: (argv) => {
-            uninstall(argv.namespace, argv.package).then(_ => {
+            uninstall(argv.namespace, argv.package, argv.cluster).then(_ => {
                 console.log(`Successfully deleted package ${argv.package}`)
             }).catch(error => {
                 console.error(error)
