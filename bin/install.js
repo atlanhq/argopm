@@ -31,6 +31,12 @@ yargs.command({
                 description: 'Force the command',
                 default: true
             })
+            .option('cluster', {
+                alias: 'c',
+                type: 'boolean',
+                description: 'Install the template at cluster level',
+                default: false
+            })
             .option('global', {
                 alias: 'g',
                 type: 'boolean',
@@ -39,14 +45,14 @@ yargs.command({
             }),
         handler: (argv) => {
             if (argv.global) {
-                return installGlobal(argv.package, argv.registry, argv.namespace).then(packageName => {
+                return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster).then(packageName => {
                     const re = new RegExp("NAME","g");
                     console.log(installHelp.replace(re, packageName));
                 }).catch(error => {
                     console.error(error)
                 });
             }
-            return install(argv.package, argv.registry, argv.namespace, argv.save).then(packageName => {
+            return install(argv.package, argv.registry, argv.namespace, argv.save, argv.cluster).then(packageName => {
                 const re = new RegExp("NAME","g");
                 console.log(installHelp.replace(re, packageName));
             }).catch(error => {
