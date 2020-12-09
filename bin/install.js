@@ -86,7 +86,7 @@ yargs.command({
                 demandOption: false,
             }),
         handler: (argv) => {
-            run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips']).then(_ => {
+            run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips'], argv.cluster).then(_ => {
                 console.log(`Package run successful`);
             }).catch(error => {
                 console.error(error)
