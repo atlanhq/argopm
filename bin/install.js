@@ -42,15 +42,11 @@ yargs.command({
                 return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster).then(packageName => {
                     const re = new RegExp("NAME","g");
                     console.log(installHelp.replace(re, packageName));
-                }).catch(error => {
-                    console.error(error)
                 });
             }
             return install(argv.package, argv.registry, argv.namespace, argv.save, argv.cluster).then(packageName => {
                 const re = new RegExp("NAME","g");
                 console.log(installHelp.replace(re, packageName));
-            }).catch(error => {
-                console.error(error)
             });
         }
     })
@@ -65,8 +61,6 @@ yargs.command({
                 return argoPackage.packageInfo();
             }).then(info => {
                 console.log(info);
-            }).catch(error => {
-                console.error(error);
             });
         }
     })
@@ -88,8 +82,6 @@ yargs.command({
         handler: (argv) => {
             run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips'], argv.cluster).then(_ => {
                 console.log(`Package run successful`);
-            }).catch(error => {
-                console.error(error)
             });
         }
     })
@@ -100,8 +92,6 @@ yargs.command({
         handler: (argv) => {
             uninstall(argv.namespace, argv.package, argv.cluster).then(_ => {
                 console.log(`Successfully deleted package ${argv.package}`)
-            }).catch(error => {
-                console.error(error)
             });
         }
     })
@@ -119,8 +109,6 @@ yargs.command({
             init(argv.force).then(packageName => {
                 const re = new RegExp("NAME","g");
                 console.log(initHelp.replace(re, packageName));
-            }).catch(error => {
-                console.error(error)
             });
         }
     })
@@ -140,8 +128,6 @@ yargs.command({
                     packageInfos.push(argoPackage.info);
                 })
                 console.log(asTable(packageInfos));
-            }).catch(error => {
-                console.error(error)
             });
         }
     })
