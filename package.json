@@ -1,6 +1,6 @@
 {
   "name": "argopm",
-  "version": "0.5.5",
+  "version": "0.5.6g",
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
@@ -9,7 +9,7 @@
   "author": "Atlan",
   "license": "MIT",
   "dependencies": {
-    "@kubernetes/client-node": "^0.12.1",
+    "@kubernetes/client-node": "^0.15.0",
     "ansicolor": "^1.1.93",
     "as-table": "^1.0.55",
     "bluebird": "^3.7.2",

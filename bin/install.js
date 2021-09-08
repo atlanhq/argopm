@@ -78,9 +78,19 @@ yargs.command({
                 type: 'string',
                 description: 'Image Pull secrets',
                 demandOption: false,
+            }).option('cron-string', {
+                alias: 's',
+                type: 'string',
+                description: 'Cron String',
+                demandOption: false,
+            }).option('time-zone', {
+                alias: 'tz',
+                type: 'string',
+                description: 'Time Zone',
+                demandOption: false,
             }),
         handler: (argv) => {
-            run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips'], argv.cluster).then(_ => {
+            run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips'], argv.cluster, argv['s'], argv['tz']).then(_ => {
                 console.log(`Package run successful`);
             });
         }
