@@ -79,7 +79,7 @@ yargs.command({
                 description: 'Image Pull secrets',
                 demandOption: false,
             }).option('cron-string', {
-                alias: 's',
+                alias: 'cs',
                 type: 'string',
                 description: 'Cron String',
                 demandOption: false,
@@ -90,7 +90,7 @@ yargs.command({
                 demandOption: false,
             }),
         handler: (argv) => {
-            run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips'], argv.cluster, argv['s'], argv['tz']).then(_ => {
+            run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips'], argv.cluster, argv['cs'], argv['tz']).then(_ => {
                 console.log(`Package run successful`);
             });
         }
