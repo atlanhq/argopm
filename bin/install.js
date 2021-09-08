@@ -36,15 +36,29 @@ yargs.command({
                 type: 'boolean',
                 description: 'Install the package globally',
                 default: false
+            }).option('cron-string', {
+                alias: 'cs',
+                type: 'string',
+                description: 'Cron String',
+                demandOption: false,
+            }).option('time-zone', {
+                alias: 'tz',
+                type: 'string',
+                description: 'Time Zone',
+                demandOption: false,
             }),
         handler: (argv) => {
+            var options = {
+                "cronString": argv['cs'],
+                "timeZone": argv['tz']
+            };
             if (argv.global) {
-                return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster).then(packageName => {
+                return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster, options).then(packageName => {
                     const re = new RegExp("NAME","g");
                     console.log(installHelp.replace(re, packageName));
                 });
             }
-            return install(argv.package, argv.registry, argv.namespace, argv.save, argv.cluster).then(packageName => {
+            return install(argv.package, argv.registry, argv.namespace, argv.save, argv.cluster, options).then(packageName => {
                 const re = new RegExp("NAME","g");
                 console.log(installHelp.replace(re, packageName));
             });
@@ -78,19 +92,9 @@ yargs.command({
                 type: 'string',
                 description: 'Image Pull secrets',
                 demandOption: false,
-            }).option('cron-string', {
-                alias: 'cs',
-                type: 'string',
-                description: 'Cron String',
-                demandOption: false,
-            }).option('time-zone', {
-                alias: 'tz',
-                type: 'string',
-                description: 'Time Zone',
-                demandOption: false,
             }),
         handler: (argv) => {
-            run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips'], argv.cluster, argv['cs'], argv['tz']).then(_ => {
+            run(argv.namespace, argv.package, argv.template, argv['san'], argv['ips'], argv.cluster).then(_ => {
                 console.log(`Package run successful`);
             });
         }
