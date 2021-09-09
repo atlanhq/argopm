@@ -68,7 +68,7 @@ yargs.command({
         command: 'info <package> [template]',
         desc: 'Get info of the installed package or a specific template in the package',
         handler: (argv) => {
-            info(argv.namespace, argv.package, argv.cluster, argv.pipeline).then(argoPackage => {
+            info(argv.namespace, argv.package, argv.cluster, argv.pipeline, argv.cron).then(argoPackage => {
                 if (argv.template) {
                     return argoPackage.templateInfo(argv.template)
                 }
@@ -104,7 +104,7 @@ yargs.command({
         aliases: ['u', 'r'],
         desc: 'Uninstall a package. Uninstalls all dependencies associated with the package.',
         handler: (argv) => {
-            uninstall(argv.namespace, argv.package, argv.cluster, argv.pipeline).then(_ => {
+            uninstall(argv.namespace, argv.package, argv.cluster, argv.pipeline, argv.cron).then(_ => {
                 console.log(`Successfully deleted package ${argv.package}`)
             });
         }
@@ -131,7 +131,7 @@ yargs.command({
         aliases: ['l'],
         desc: 'List all the packages installed in the namespace',
         handler: (argv) => {
-            list(argv.namespace, argv.cluster, argv.pipeline).then(argoPackages => {
+            list(argv.namespace, argv.cluster, argv.pipeline, argv.cron).then(argoPackages => {
                 if (argoPackages.length === 0) {
                     console.log("No packages found");
                     return
@@ -161,6 +161,12 @@ yargs.command({
         alias: 'p',
         type: 'boolean',
         description: 'Enable Argo Pipeline type',
+        default: false
+    })
+    .option('cron', {
+        alias: 'cr',
+        type: 'boolean',
+        description: 'Enable Cron Workflow type',
         default: false
     })
     .option('cluster', {
