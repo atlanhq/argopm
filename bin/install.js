@@ -46,6 +46,7 @@ yargs.command({
                 type: 'string',
                 description: 'Time Zone',
                 demandOption: false,
+                default: Intl.DateTimeFormat().resolvedOptions().timeZone
             }),
         handler: (argv) => {
             var options = {
