@@ -36,15 +36,30 @@ yargs.command({
                 type: 'boolean',
                 description: 'Install the package globally',
                 default: false
+            }).option('cron-string', {
+                alias: 'cs',
+                type: 'string',
+                description: 'Cron String',
+                demandOption: false,
+            }).option('time-zone', {
+                alias: 'tz',
+                type: 'string',
+                description: 'Time Zone',
+                demandOption: false,
+                default: Intl.DateTimeFormat().resolvedOptions().timeZone
             }),
         handler: (argv) => {
+            var options = {
+                "cronString": argv['cs'],
+                "timeZone": argv['tz']
+            };
             if (argv.global) {
-                return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster).then(packageName => {
+                return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster, options).then(packageName => {
                     const re = new RegExp("NAME","g");
                     console.log(installHelp.replace(re, packageName));
                 });
             }
-            return install(argv.package, argv.registry, argv.namespace, argv.save, argv.cluster).then(packageName => {
+            return install(argv.package, argv.registry, argv.namespace, argv.save, argv.cluster, options).then(packageName => {
                 const re = new RegExp("NAME","g");
                 console.log(installHelp.replace(re, packageName));
             });
