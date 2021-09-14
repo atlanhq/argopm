@@ -19,7 +19,8 @@
     "rimraf": "^3.0.2",
     "stream-buffers": "^3.0.2",
     "system-commands": "^1.1.7",
-    "yargs": "^15.4.1"
+    "yargs": "^15.4.1",
+    "yargs-parser": ">=5.0.1"
   },
   "bin": {
     "argopm": "./bin/install.js"
