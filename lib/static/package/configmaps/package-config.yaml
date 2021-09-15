@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: NAME-config
+  labels:
+    category: crawler
+    source: snowflake
+    subCategory: warehouse
+data:
+  message: string
