@@ -73,7 +73,7 @@ yargs.command({
                 if (argv.template) {
                     return argoPackage.templateInfo(argv.template)
                 }
-                return argoPackage.packageInfo();
+                return argoPackage.packageInfo(argv.namespace);
             }).then(info => {
                 console.log(info);
             });
