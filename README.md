@@ -37,9 +37,43 @@ Options:
   --help           Show help                                                                                                           [boolean]
 ```
 
+### Package Structure
+
+This is the structure of a new package created with `argopm`. The 
+
+```bash
+.
+├── README.md 
+├── index.js
+├── package.json
+├── configmaps # configmaps to be installed in the k8s cluster
+│   ├── package-config.yaml
+│   └── semaphore-config.yaml
+├── cronworkflows # Cron Workflows to be installed on Argo
+│   └── package-cronworkflow.yaml
+├── pipelines # Argo Dataflow pipelines to be installed
+│   └── package-pipeline.yaml
+├── secrets # Secrets to be created in the k8s cluster
+│   └── package-secret.yaml
+├── static # Static data to be uploaded on S3
+│   └── data.json
+└── templates # Workflow templates to be installed on Argo
+    └── package-template.yaml
+
+6 directories, 10 files
+```
+
+### Static Files
+
+Everything present in the `static` subdirectory of a package will be uploaded to AWS S3 with the following location prefix :
+
+```
+<bucket-name>/argo-artifacts/argopm/<package-name>/<version>/static/
+```
+
 ### Salient Features:
 1. Built as a `npm` package
 2. Works on marketplace built on [verdaccio](https://verdaccio.org). Verdaccio is an open-source _npm-like_ marketplace
 3. Uses the K8s Custom resources to install packages into your Argo cluster
-4. Support for uploading static files to the artifactory (support available for AWS S3)
+4. Support for uploading static files to the artifactory (available for AWS S3)
 5. Manages versions and installed packages using K8s labels on Argo workflow templates
