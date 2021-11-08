@@ -1,13 +1,44 @@
-# argopm(1) -- an Argo package manager
+# argopm -- an Argo package manager
 
 This is an Argo package manager that helps you find, install and publish packages to your Argo cluster.
 
-## SYNOPSIS
-This is just enough info to get you up and running.
-Much more info will be available via `argopm help` once it's installed.
+### Requirements
+
+1. Node.js `v16.9.0`
+
+Please ensure you have `kubectl` access to the Kubernetes cluster where Argo is deployed and the AWS credentials for writing files to AWS S3.
+
+### Installation
+
+```bash
+npm i -g argopm
+```
+
+### Usage
+
+``` $ argopm --help
+argopm <command>
+
+Commands:
+  argopm install <package>          Install a package. Package name can be of the format package@version                        [aliases: i]
+  argopm info <package> [template]  Get info of the installed package or a specific template in the package
+  argopm run <package> [template]   Run the package or the package template. Pass in arguments using --
+  argopm uninstall <package>        Uninstall a package. Uninstalls all dependencies associated with the package.            [aliases: u, r]
+  argopm init                       Initializes an Argo package inside the current working directory
+  argopm list                       List all the packages installed in the namespace                                            [aliases: l]
+
+Options:
+  --version        Show version number                                                                                                 [boolean]
+  --namespace, -n  Kubernetes namespace. Packages will be installed in this namespace                                 [string] [default: "argo"]
+  --registry, -r   Argo Package Registry                                                     [string] [default: "https://marketplace.atlan.com"]
+  --pipeline, -p   Enable Argo Pipeline type                                                                          [boolean] [default: false]
+  --cluster, -c    Install the template at cluster level                                                              [boolean] [default: false]
+  --help           Show help                                                                                                           [boolean]
+```
 
 ### Salient Features:
 1. Built as a `npm` package
 2. Works on marketplace built on [verdaccio](https://verdaccio.org). Verdaccio is an open-source _npm-like_ marketplace
 3. Uses the K8s Custom resources to install packages into your Argo cluster
-4. Manages versions and installed packages using K8s labels on Argo workflow templates
+4. Support for uploading static files to the artifactory (support available for AWS S3)
+5. Manages versions and installed packages using K8s labels on Argo workflow templates
