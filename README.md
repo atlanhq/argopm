@@ -2,7 +2,7 @@
 
 This is an Argo package manager that helps you find, install and publish packages to your Argo cluster.
 
-![example workflow](https://github.com/atlanhq/argopm/actions/workflows/npm-publish.yml/badge.svg)
+![npm-publish-status](https://github.com/atlanhq/argopm/actions/workflows/npm-publish.yml/badge.svg)
 ### Requirements
 
 1. Node.js `v16.9.0`
