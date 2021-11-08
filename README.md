@@ -1,4 +1,4 @@
-# argopm -- The package manager for Argo
+# argopm - A package manager for Argo
 
 This is an Argo package manager that helps you find, install and publish packages to your Argo cluster.
 
