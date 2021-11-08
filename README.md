@@ -16,7 +16,8 @@ npm i -g argopm
 
 ### Usage
 
-``` $ argopm --help
+```bash 
+$ argopm --help
 argopm <command>
 
 Commands:
