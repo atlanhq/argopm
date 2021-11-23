@@ -1,6 +1,6 @@
 {
   "name": "argopm",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
@@ -9,6 +9,7 @@
   "author": "Atlan",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.32.0",
     "@kubernetes/client-node": "^0.15.0",
     "ansicolor": "^1.1.93",
     "as-table": "^1.0.55",
@@ -20,8 +21,7 @@
     "stream-buffers": "^3.0.2",
     "system-commands": "^1.1.7",
     "yargs": "^15.4.1",
-    "yargs-parser": ">=5.0.1",
-    "@aws-sdk/client-s3": "^3.32.0"
+    "yargs-parser": ">=5.0.1"
   },
   "bin": {
     "argopm": "./bin/install.js"
