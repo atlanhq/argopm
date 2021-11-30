@@ -149,16 +149,10 @@ yargs
         },
     })
     .command({
-        command: "init <package_name>",
+        command: "init [package_name]",
         desc: "Initializes an Argo package inside the current working directory",
         builder: (yargs) =>
             yargs
-                .positional("package_name", {
-                    require: false,
-                    describe: "Package Name",
-                    type: "string",
-                    default: null,
-                })
                 .option("force", {
                     alias: "f",
                     type: "boolean",
