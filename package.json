@@ -13,6 +13,7 @@
     "@kubernetes/client-node": "^0.15.0",
     "ansicolor": "^1.1.93",
     "as-table": "^1.0.55",
+    "axios": "^0.24.0",
     "bluebird": "^3.7.2",
     "js-yaml": "^3.14.0",
     "npm-package-arg": "^8.0.1",
