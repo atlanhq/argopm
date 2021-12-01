@@ -1,3 +1,10 @@
+## CRON Workflows
+
+The yaml files in this directory are installed as Cron Workflow Templates on the Argo instance in the cluster.
+
+### Sample Cron Workflow
+
+```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: CronWorkflow
 metadata:
@@ -13,3 +20,8 @@ spec:
   workflowSpec:
     workflowTemplateRef:
       name: NAME
+```
+
+### Useful Links
+
+- https://argoproj.github.io/argo-workflows/cron-workflows/
