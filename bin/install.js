@@ -149,17 +149,18 @@ yargs
         },
     })
     .command({
-        command: "init",
+        command: "init [package_name]",
         desc: "Initializes an Argo package inside the current working directory",
         builder: (yargs) =>
-            yargs.option("force", {
-                alias: "f",
-                type: "boolean",
-                description: "Force the command",
-                default: true,
-            }),
+            yargs
+                .option("force", {
+                    alias: "f",
+                    type: "boolean",
+                    description: "Force the command",
+                    default: true,
+                }),
         handler: (argv) => {
-            init(argv.force).then((packageName) => {
+            init(argv.force, argv.package_name).then((packageName) => {
                 const re = new RegExp("NAME", "g");
                 console.log(initHelp.replace(re, packageName));
             });
