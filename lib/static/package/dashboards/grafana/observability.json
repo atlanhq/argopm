@@ -1,5 +1,6 @@
 {
-    "annotations": {
+  "dashboard": {
+      "annotations": {
         "list": [
             {
                 "builtIn": 1,
@@ -23,7 +24,7 @@
     "fiscalYearStartMonth": 0,
     "gnetId": null,
     "graphTooltip": 0,
-    "id": 858,
+    "id": null,
     "iteration": 1636697747062,
     "links": [],
     "liveNow": false,
