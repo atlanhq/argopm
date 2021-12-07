@@ -11,6 +11,15 @@ metadata:
   name: NAME
 spec:
   entrypoint: whalesay-template
+  metrics:
+    prometheus:
+      - name: exec_duration_gauge         # Metric name (will be prepended with "argo_workflows_")
+        labels:                           # Labels are optional. Avoid cardinality explosion.
+          - key: name
+            value: sample_name
+        help: "Duration gauge by name"    # A help doc describing your metric. This is required.
+        gauge:                            # The metric type. Available are "gauge", "histogram", and "counter".
+          value: "{{workflow.duration}}"  # The value of your metric. It could be an Argo variable (see variables doc) or a literal value
   arguments:
     parameters:
       - name: message
