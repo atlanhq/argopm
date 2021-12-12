@@ -6,8 +6,29 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [
+    "sample", "something"
+  ],
+  "homepage": "https://github.com/owner/project#readme",
+  "bugs": {
+    "url" : "https://github.com/owner/project/issues",
+    "email" : "project@hostname.com"
+  },
   "author": "Author",
   "license": "MIT",
+  "config": {
+    "labels": {
+      "com.atlan.packages/verified": "true",
+      "com.atlan.packages/type": "connector",
+      "com.atlan.packages/source": "snowflake",
+      "com.atlan.packages/sourceCategory": "warehouse"
+    },
+    "annotations": {
+      "com.atlan.packages/displayName": "NAME",
+      "com.atlan.packages/icon": "https://docs.snowflake.com/en/_images/logo-snowflake-sans-text.png",
+      "com.atlan.packages/logo": "https://1amiydhcmj36tz3733v94f15-wpengine.netdna-ssl.com/wp-content/themes/snowflake/assets/img/logo-blue.svg"
+    }
+  },
   "dependencies": {
   }
 }
