@@ -50,20 +50,6 @@ yargs
                     description: "Time Zone",
                     demandOption: false,
                     default: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                })
-                .option("workflow-controller-configmap-name", {
-                    alias: "wfccm",
-                    type: "string",
-                    description: "Argo Workflow Controller ConfigMap Name",
-                    demandOption: false,
-                    default: "atlan-defaults",
-                })
-                .option("argo-namespace", {
-                    alias: "ans",
-                    type: "string",
-                    description: "Kubernetes namespace where the Workflow Controller ConfigMap exists",
-                    demandOption: false,
-                    default: "default",
                 }),
         handler: (argv) => {
             var options = {
