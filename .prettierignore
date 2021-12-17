@@ -1,0 +1,5 @@
+lib/static
+.github/
+.vscode/
+package-lock.json
+package.json
