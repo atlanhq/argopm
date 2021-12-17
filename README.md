@@ -3,6 +3,7 @@
 This is an Argo package manager that helps you find, install and publish packages to your Argo cluster.
 
 ![npm-publish-status](https://github.com/atlanhq/argopm/actions/workflows/npm-publish.yml/badge.svg)
+
 ### Requirements
 
 1. Node.js `v16.9.0`
@@ -17,7 +18,7 @@ npm i -g argopm
 
 ### Usage
 
-```bash 
+```bash
 $ argopm --help
 argopm <command>
 
@@ -40,11 +41,11 @@ Options:
 
 ### Package Structure
 
-This is the structure of a new package created with `argopm`. The 
+This is the structure of a new package created with `argopm`. The
 
 ```bash
 .
-├── README.md 
+├── README.md
 ├── index.js
 ├── package.json
 ├── configmaps # configmaps to be installed in the k8s cluster
@@ -73,6 +74,7 @@ Everything present in the `static` subdirectory of a package will be uploaded to
 ```
 
 ### Salient Features:
+
 1. Built as a `npm` package
 2. Works on marketplace built on [verdaccio](https://verdaccio.org). Verdaccio is an open-source _npm-like_ marketplace
 3. Uses the K8s Custom resources to install packages into your Argo cluster
