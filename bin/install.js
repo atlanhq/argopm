@@ -57,28 +57,19 @@ yargs
                 timeZone: argv["tz"],
             };
             if (argv.global) {
-                return installGlobal(
-                    argv.package,
-                    argv.registry,
-                    argv.namespace,
-                    argv.cluster,
-                    options
-                ).then((packageName) => {
+                return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster, options).then(
+                    (packageName) => {
+                        const re = new RegExp("NAME", "g");
+                        console.log(installHelp.replace(re, packageName));
+                    }
+                );
+            }
+            return install(argv.package, argv.registry, argv.namespace, argv.save, argv.cluster, options).then(
+                (packageName) => {
                     const re = new RegExp("NAME", "g");
                     console.log(installHelp.replace(re, packageName));
-                });
-            }
-            return install(
-                argv.package,
-                argv.registry,
-                argv.namespace,
-                argv.save,
-                argv.cluster,
-                options
-            ).then((packageName) => {
-                const re = new RegExp("NAME", "g");
-                console.log(installHelp.replace(re, packageName));
-            });
+                }
+            );
         },
     })
     .command({
@@ -134,13 +125,12 @@ yargs
         command: "init [package_name]",
         desc: "Initializes an Argo package inside the current working directory",
         builder: (yargs) =>
-            yargs
-                .option("force", {
-                    alias: "f",
-                    type: "boolean",
-                    description: "Force the command",
-                    default: true,
-                }),
+            yargs.option("force", {
+                alias: "f",
+                type: "boolean",
+                description: "Force the command",
+                default: true,
+            }),
         handler: (argv) => {
             init(argv.force, argv.package_name).then((packageName) => {
                 const re = new RegExp("NAME", "g");
