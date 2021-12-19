@@ -19,6 +19,7 @@
     "as-table": "^1.0.55",
     "axios": "^0.24.0",
     "bluebird": "^3.7.2",
+    "compare-versions": "^4.1.2",
     "dotenv": "^10.0.0",
     "js-yaml": "^3.14.0",
     "npm-package-arg": "^8.0.1",
@@ -37,7 +38,10 @@
     "prettier": "^2.5.1"
   },
   "lint-staged": {
-    "*.js": ["eslint --fix", "prettier --write"]
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "bin": {
     "argopm": "./bin/install.js"

@@ -29,8 +29,8 @@ yargs
                 .option("force", {
                     alias: "f",
                     type: "boolean",
-                    description: "Force the command",
-                    default: true,
+                    description: "Force install package ignoring version in cluster",
+                    default: false,
                 })
                 .option("global", {
                     alias: "g",
@@ -53,6 +53,7 @@ yargs
                 }),
         handler: (argv) => {
             var options = {
+                force: argv["f"],
                 cronString: argv["cs"],
                 timeZone: argv["tz"],
             };
@@ -76,7 +77,7 @@ yargs
         command: "info <package> [template]",
         desc: "Get info of the installed package or a specific template in the package",
         handler: (argv) => {
-            info(argv.namespace, argv.package, argv.cluster, argv.pipeline)
+            info(argv.namespace, argv.package, argv.cluster)
                 .then((argoPackage) => {
                     if (argv.template) {
                         return argoPackage.templateInfo(argv.template);
@@ -116,7 +117,7 @@ yargs
         aliases: ["u", "r"],
         desc: "Uninstall a package. Uninstalls all dependencies associated with the package.",
         handler: (argv) => {
-            uninstall(argv.namespace, argv.package, argv.cluster, argv.pipeline).then((_) => {
+            uninstall(argv.namespace, argv.package, argv.cluster).then((_) => {
                 console.log(`Successfully deleted package ${argv.package}`);
             });
         },
@@ -143,7 +144,7 @@ yargs
         aliases: ["l"],
         desc: "List all the packages installed in the namespace",
         handler: (argv) => {
-            list(argv.namespace, argv.cluster, argv.pipeline).then((argoPackages) => {
+            list(argv.namespace, argv.cluster).then((argoPackages) => {
                 if (argoPackages.length === 0) {
                     console.log("No packages found");
                     return;
@@ -168,12 +169,6 @@ yargs
         type: "string",
         description: "Argo Package Registry",
         default: "https://marketplace.atlan.com",
-    })
-    .option("pipeline", {
-        alias: "p",
-        type: "boolean",
-        description: "Enable Argo Pipeline type",
-        default: false,
     })
     .option("cluster", {
         alias: "c",
