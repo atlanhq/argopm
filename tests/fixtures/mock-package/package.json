@@ -1,0 +1,13 @@
+{
+  "name": "@atlan/mock-package-delete-me",
+  "version": "0.0.1",
+  "description": "I should never be published",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Atlan",
+  "license": "MIT",
+  "dependencies": {
+  }
+}

@@ -4,7 +4,7 @@
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "prettier": "prettier --write .",
     "eslint": "eslint --fix .",
     "lint-staged": "lint-staged",
@@ -33,7 +33,9 @@
   "devDependencies": {
     "eslint": "^8.5.0",
     "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-jest": "^25.3.0",
     "husky": "^7.0.4",
+    "jest": "^27.4.5",
     "lint-staged": "^12.1.2",
     "prettier": "^2.5.1"
   },

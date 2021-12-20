@@ -1,0 +1,7 @@
+# ConfigMaps
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argopm-mock-package-delete-me-configmap
+data:
+  message: string

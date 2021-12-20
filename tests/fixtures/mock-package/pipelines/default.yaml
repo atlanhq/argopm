@@ -1,0 +1,13 @@
+apiVersion: dataflow.argoproj.io/v1alpha1
+kind: Pipeline
+metadata:
+  name: argopm-mock-package-delete-me-pipeline
+spec:
+  steps:
+    - cat: {}
+      name: main
+      sinks:
+        - log: {}
+      sources:
+        - cron:
+            schedule: "*/3 * * * * *"
