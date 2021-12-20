@@ -4,7 +4,7 @@
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
-    "test": "jest",
+    "test": "jest --detectOpenHandles",
     "prettier": "prettier --write .",
     "eslint": "eslint --fix .",
     "lint-staged": "lint-staged",
