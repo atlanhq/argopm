@@ -118,3 +118,5 @@ dist
 
 .idea
 .vscode
+
+tests/fixtures/*/package-lock.json

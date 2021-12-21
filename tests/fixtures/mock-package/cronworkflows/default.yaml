@@ -1,0 +1,20 @@
+# CronWorkflows
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: argopm-mock-package-delete-me-cronworkflow
+spec:
+  schedule: "* * * * *"
+  startingDeadlineSeconds: 0
+  concurrencyPolicy: "Replace" # Default to "Allow"
+  successfulJobsHistoryLimit: 3 # Default 3
+  failedJobsHistoryLimit: 2 # Default 1
+  suspend: true # Set to "true" to suspend scheduling
+  workflowSpec:
+    entrypoint: whalesay
+    templates:
+      - name: whalesay
+        container:
+          image: alpine:3.6
+          command: [sh, -c]
+          args: ["date; sleep 90"]

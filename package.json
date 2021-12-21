@@ -4,7 +4,7 @@
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --detectOpenHandles",
     "prettier": "prettier --write .",
     "eslint": "eslint --fix .",
     "lint-staged": "lint-staged",
@@ -19,6 +19,7 @@
     "as-table": "^1.0.55",
     "axios": "^0.24.0",
     "bluebird": "^3.7.2",
+    "compare-versions": "^4.1.2",
     "dotenv": "^10.0.0",
     "js-yaml": "^3.14.0",
     "npm-package-arg": "^8.0.1",
@@ -32,12 +33,17 @@
   "devDependencies": {
     "eslint": "^8.5.0",
     "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-jest": "^25.3.0",
     "husky": "^7.0.4",
+    "jest": "^27.4.5",
     "lint-staged": "^12.1.2",
     "prettier": "^2.5.1"
   },
   "lint-staged": {
-    "*.js": ["eslint --fix", "prettier --write"]
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "bin": {
     "argopm": "./bin/install.js"
