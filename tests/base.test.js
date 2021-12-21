@@ -2,7 +2,7 @@ const { uninstall } = require("../lib/index");
 const { install, installGlobal } = require("../lib/install.js");
 const { getPackageName, MOCK_PACKAGE_PATH, REGISTRY } = require("./test-utils");
 
-describe("simulate package install", () => {
+describe.skip("simulate package install", () => {
     const namespace = "default";
     const cluster = false;
 

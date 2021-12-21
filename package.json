@@ -7,8 +7,7 @@
     "test": "jest --detectOpenHandles",
     "prettier": "prettier --write .",
     "eslint": "eslint --fix .",
-    "lint-staged": "lint-staged",
-    "prepare": "husky install"
+    "lint-staged": "lint-staged"
   },
   "author": "Atlan",
   "license": "MIT",
@@ -34,9 +33,9 @@
     "eslint": "^8.5.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-jest": "^25.3.0",
-    "husky": "^7.0.4",
     "jest": "^27.4.5",
     "lint-staged": "^12.1.2",
+    "pre-commit": "^1.2.2",
     "prettier": "^2.5.1"
   },
   "lint-staged": {
@@ -45,6 +44,9 @@
       "prettier --write"
     ]
   },
+  "pre-commit": [
+    "lint-staged"
+  ],
   "bin": {
     "argopm": "./bin/install.js"
   },
