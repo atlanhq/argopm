@@ -168,7 +168,7 @@ yargs
         alias: "r",
         type: "string",
         description: "Argo Package Registry",
-        default: "https://marketplace.atlan.com",
+        default: "https://packages.atlan.com",
     })
     .option("cluster", {
         alias: "c",
