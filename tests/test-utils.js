@@ -5,7 +5,7 @@ module.exports = {
     MOCK_PACKAGE_PATH: __dirname + "/fixtures/mock-package",
     // TODO: use the username to ensure tests don't collide between different users of same cluster
     USERNAME: os.userInfo().username,
-    REGISTRY: "https://marketplace.atlan.com",
+    REGISTRY: "https://packages.atlan.com",
 
     getPackageName: function (path) {
         const packageJSONFilePath = `${path}/package.json`;

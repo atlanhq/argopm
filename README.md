@@ -33,7 +33,7 @@ Commands:
 Options:
   --version        Show version number                                                                                                 [boolean]
   --namespace, -n  Kubernetes namespace. Packages will be installed in this namespace                                 [string] [default: "argo"]
-  --registry, -r   Argo Package Registry                                                     [string] [default: "https://marketplace.atlan.com"]
+  --registry, -r   Argo Package Registry                                                     [string] [default: "https://packages.atlan.com"]
   --pipeline, -p   Enable Argo Pipeline type                                                                          [boolean] [default: false]
   --cluster, -c    Install the template at cluster level                                                              [boolean] [default: false]
   --help           Show help                                                                                                           [boolean]
