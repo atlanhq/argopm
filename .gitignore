@@ -120,3 +120,4 @@ dist
 .vscode
 
 tests/fixtures/*/package-lock.json
+build/*
