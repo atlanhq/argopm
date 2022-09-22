@@ -1,0 +1,30 @@
+{
+  "name": "argopm",
+  "version": "1.0.0",
+  "description": "Argo package manager",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atlanhq/argopm.git"
+  },
+  "author": "Atlan",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/atlanhq/argopm/issues"
+  },
+  "bin": {
+    "argopm": "./build/main.js"
+  },
+  "homepage": "https://github.com/atlanhq/argopm#readme",
+  "devDependencies": {
+    "@tsconfig/node16": "^1.0.3",
+    "typescript": "^4.8.3"
+  },
+  "dependencies": {
+    "@types/yargs": "^17.0.12",
+    "yargs": "^17.5.1"
+  }
+}
