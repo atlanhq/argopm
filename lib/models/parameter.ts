@@ -1,9 +1,9 @@
 import { cyan, green, lightCyan } from "ansicolor";
 
 export class Parameter {
-    name: any;
+    name: string;
     value: any;
-    isRequired: boolean;
+    isRequired = false;
 
     /**
      * @param
@@ -11,7 +11,6 @@ export class Parameter {
     constructor({ name, value }) {
         this.name = name;
         this.value = value;
-        this.isRequired = false;
         if (this.value === undefined) {
             this.isRequired = true;
         }

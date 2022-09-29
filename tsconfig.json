@@ -1,9 +1,16 @@
 {
   "compilerOptions": {
-    "outDir": "./built",
+    "outDir": "./dist",
+    "module": "commonjs",
+    "target": "esnext",
     "allowJs": true,
-    "target": "es6",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "moduleResolution": "Node"
   },
-  "include": ["./lib/**/*", "./bin/**/*", "./tests/**/*"]
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  },
+  "include": ["./lib/**/*", "./bin/**/*"]
 }

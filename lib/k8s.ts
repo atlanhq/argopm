@@ -1,11 +1,11 @@
-// ./lib/js
-import { constants } from "./constants";
-import { readdir, readFile } from "node:fs/promises";
-import { readFileSync, existsSync } from "node:fs";
-import { load } from "js-yaml";
-import { PackageInfo } from "./models/info";
-import { Resource } from "./models/resource";
 import { CoreV1Api, CustomObjectsApi, KubeConfig } from "@kubernetes/client-node";
+import { load } from "js-yaml";
+import { existsSync, readFileSync } from "node:fs";
+import { readdir, readFile } from "node:fs/promises";
+import { IncomingMessage } from "node:http";
+import { constants } from "./constants";
+import { PackageInfo, PackageObjectType } from "./models/info";
+import { Resource } from "./models/resource";
 
 const kc = new KubeConfig();
 kc.loadFromDefault();
@@ -20,18 +20,29 @@ export type GenericK8sSpecType = {
     spec?: any;
 };
 
+export type K8sApiResponse = {
+    response: IncomingMessage;
+    body: any;
+};
+
+export type K8sInstallerOptionsType = {
+    force?: boolean;
+    cronString?: string;
+    timeZone?: string;
+};
+
 /**
- *
- * @param {string} name
- * @returns
+ * Get Resource object by name.
+ * @param  {GenericK8sSpecType[]} resources
+ * @param  {string} name
  */
-function getResourceByName(resources: GenericK8sSpecType[], name: any) {
+function getResourceByName(resources: GenericK8sSpecType[], name: string) {
     //TODO: Possible bottleneck if packages grow.
     return new Resource(resources.find(({ metadata }) => metadata.name === name));
 }
 
 /**
- *
+ * CHeck existing Resource object.
  * @param {Resource} resource
  * @param {string} name
  * @param {string} kind
@@ -39,7 +50,13 @@ function getResourceByName(resources: GenericK8sSpecType[], name: any) {
  * @param {boolean} forceUpdate
  * @returns {{shouldUpdate: boolean, msgPrefix: string}}
  */
-function checkExistingResource(resource: Resource, name: any, kind: any, newVersion: any, forceUpdate: any) {
+function checkExistingResource(
+    resource: Resource,
+    name: string,
+    kind: string,
+    newVersion: string,
+    forceUpdate: boolean
+): { shouldUpdate: boolean; msgPrefix: string } {
     const needsUpdate = resource.needsUpdate(newVersion);
 
     const msgPrefix = `${name} ${kind} already present in the cluster.`;
@@ -57,30 +74,30 @@ function checkExistingResource(resource: Resource, name: any, kind: any, newVers
 }
 
 export class K8sInstaller {
-    packagePath: any;
-    namespace: any;
-    forceUpdate: any;
-    parentPackage: any;
-    registry: any;
-    package: any;
-    cronString: any;
-    timeZone: any;
+    packagePath: string;
+    namespace: string;
+    forceUpdate: boolean;
+    parentPackage: string;
+    registry: string;
+    package: PackageObjectType;
+    cronString: string;
+    timeZone: string;
 
     /**
      * Installs the given package to Argo K8s deployment
      *
-     * @param {String} packagePath Argo package path
-     * @param {String} namespace Namespace to install the package in
-     * @param {String} parentPackage Parent package of the format <packagename>@<version>
-     * @param {String} registry Package registry
-     * @param {Object} options
+     * @param {string} packagePath Argo package path
+     * @param {string} namespace Namespace to install the package in
+     * @param {string} parentPackage Parent package of the format <packagename>@<version>
+     * @param {string} registry Package registry
+     * @param {K8sInstallerOptionsType} options
      */
     constructor(
-        packagePath: unknown,
-        namespace: any,
-        parentPackage: any,
+        packagePath: string,
+        namespace: string,
+        parentPackage: string,
         registry: string,
-        options: { force: any; cronString: any; timeZone: any }
+        options: K8sInstallerOptionsType
     ) {
         this.packagePath = packagePath;
         this.namespace = namespace;
@@ -96,7 +113,7 @@ export class K8sInstaller {
      * Installs the given package to Argo K8s deployment
      * @param {boolean} cluster
      */
-    async install(cluster: any) {
+    async install(cluster: boolean) {
         console.log(`Installing package ${this.package.name}@${this.package.version}`);
         await this.installConfigs();
         await this.installSecrets();
@@ -125,7 +142,7 @@ export class K8sInstaller {
      * Installs cron workflows
      * @param {boolean} cluster - determines whether the templateRef is from the cluster scope or a namespace
      */
-    installCronWorkflows(cluster: any) {
+    installCronWorkflows(cluster: boolean) {
         const dirPath = `${this.packagePath}/cronworkflows/`;
         return this.installYamlInPath(
             dirPath,
@@ -154,7 +171,7 @@ export class K8sInstaller {
      * Installs the templates
      * @param {boolean} cluster Determines if ClusterWorkflowTemplates or WorkflowTemplates are installed
      */
-    installTemplates(cluster: any) {
+    installTemplates(cluster: boolean) {
         const dirPath = `${this.packagePath}/templates/`;
         let kind = constants.ARGO_WORKFLOW_TEMPLATES_KIND;
         if (cluster) {
@@ -171,11 +188,11 @@ export class K8sInstaller {
 
     /**
      * Install all YAML files in path
-     * @param {String} dirPath
+     * @param {string} dirPath
      * @param {boolean} cluster
      * @param {string} kind
      * @param {string} group
-     * @param {Function} fn
+     * @param
      */
     async installYamlInPath(dirPath: string, cluster: boolean, kind: string, group: string, fn) {
         if (!existsSync(dirPath)) {
@@ -208,7 +225,7 @@ export class K8sInstaller {
      * Installs the given package to Argo K8s deployment
      * @param {Object} yamlObject YAML object
      */
-    addAPMLabels(yamlObject: GenericK8sSpecType, folder: any, fileName: any) {
+    addAPMLabels(yamlObject: GenericK8sSpecType, folder: string, fileName: string) {
         const metadata = yamlObject.metadata;
         if (!metadata.name) {
             metadata.name = this.package.name.replace(/@/g, "-").replace(/\//g, "-").replace(/:/g, "-");
@@ -251,16 +268,16 @@ export class K8sInstaller {
      * @param {object} yamlObject
      * @param {boolean} cluster
      * @param {boolean} forceUpdate
-     * @returns {Promise<Object | null>}
+     * @returns
      */
     static async upsertConfigMap(
-        packageName: any,
+        packageName: string,
         namespace: string,
-        kind: any,
-        group: any,
+        kind: string,
+        group: string,
         yamlObject: GenericK8sSpecType,
-        cluster: any,
-        forceUpdate: any
+        cluster: boolean,
+        forceUpdate: boolean
     ) {
         const response = await coreK8sApi.listNamespacedConfigMap(
             namespace,
@@ -311,16 +328,16 @@ export class K8sInstaller {
      * @param {object} yamlObject
      * @param {boolean} cluster
      * @param {boolean} forceUpdate
-     * @returns {Promise<Object | null>}
+     * @returns
      */
     static async upsertSecret(
-        packageName: any,
+        packageName: string,
         namespace: string,
-        kind: any,
-        group: any,
+        kind: string,
+        group: string,
         yamlObject: GenericK8sSpecType,
-        cluster: any,
-        forceUpdate: any
+        cluster: boolean,
+        forceUpdate: boolean
     ) {
         const response = await coreK8sApi.listNamespacedSecret(
             namespace,
@@ -373,16 +390,16 @@ export class K8sInstaller {
      * @param {boolean} forceUpdate
      */
     static async upsertTemplate(
-        packageName: any,
+        packageName: string,
         namespace: string,
         kind: string,
         group: string,
         yamlObject: GenericK8sSpecType,
-        cluster: any,
-        forceUpdate: any
+        cluster: boolean,
+        forceUpdate: boolean
     ) {
         const plural = `${kind.toLowerCase()}s`;
-        let response;
+        let response: K8sApiResponse;
 
         if (!cluster) {
             response = await customK8sApi.listNamespacedCustomObject(
@@ -418,7 +435,7 @@ export class K8sInstaller {
             } else {
                 const templates = yamlObject["spec"]["templates"];
                 if (templates) {
-                    templates.forEach((template: { [x: string]: { [x: string]: any } }) => {
+                    templates.forEach((template: any) => {
                         if (template["dag"]) {
                             const tasks = template["dag"]["tasks"];
                             tasks.forEach((task: { [x: string]: { [x: string]: boolean } }) => {
@@ -451,16 +468,16 @@ export class K8sInstaller {
      * @param {string} cluster
      * @param {string} apiGroup
      * @param {boolean} forceUpdate
-     * @returns {Promise<Object | null>}
+     * @returns
      */
     static async handleUpsertWithTemplateResponse(
-        response: { body: { items: any } },
+        response: K8sApiResponse,
         namespace: string,
         plural: string,
         yamlObject: GenericK8sSpecType,
-        cluster: any,
+        cluster: boolean,
         apiGroup: string,
-        forceUpdate: any
+        forceUpdate: boolean
     ) {
         const name = yamlObject.metadata.name;
         const items = response.body.items;
@@ -513,7 +530,7 @@ export class K8sInstaller {
         namespace: string,
         plural: string,
         yamlObject: GenericK8sSpecType,
-        cluster: any,
+        cluster: boolean,
         apiGroup: string
     ) {
         if (cluster) {
@@ -549,7 +566,7 @@ export class K8sInstaller {
         namespace: string,
         plural: string,
         yamlObject: GenericK8sSpecType,
-        cluster: any,
+        cluster: boolean,
         apiGroup: string
     ) {
         if (cluster) {
@@ -590,7 +607,14 @@ export class K8sInstaller {
      * @param {string} apiGroup
      * @returns {Promise<Object>} k8s response
      */
-    static async recreateCustomResource(name, namespace, plural, yamlObject, cluster, apiGroup) {
+    static async recreateCustomResource(
+        name: string,
+        namespace: string,
+        plural: string,
+        yamlObject: object,
+        cluster: boolean,
+        apiGroup: string
+    ): Promise<object> {
         if (cluster) {
             await customK8sApi.deleteClusterCustomObject(
                 constants.ARGO_K8S_API_GROUP,

@@ -7,12 +7,13 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "sample", "something"
+    "sample",
+    "something"
   ],
   "homepage": "https://github.com/owner/project#readme",
   "bugs": {
-    "url" : "https://github.com/owner/project/issues",
-    "email" : "project@hostname.com"
+    "url": "https://github.com/owner/project/issues",
+    "email": "project@hostname.com"
   },
   "author": "Author",
   "license": "MIT",
@@ -29,6 +30,5 @@
       "com.atlan.packages/logo": "https://1amiydhcmj36tz3733v94f15-wpengine.netdna-ssl.com/wp-content/themes/snowflake/assets/img/logo-blue.svg"
     }
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }

@@ -3,11 +3,11 @@ import { generateArguments } from "./utils";
 
 /**
  * Delete a package
- * @param {String} namespace
- * @param {String} name
- * @param {String} cluster
+ * @param {string} namespace
+ * @param {string} name
+ * @param {string} cluster
  */
-export async function uninstall(namespace: string, name: string, cluster: string) {
+export async function uninstall(namespace: string, name: string, cluster: boolean) {
     const argoPackage = await Package.info(namespace, name, cluster);
     return argoPackage.delete(cluster, namespace);
 }
@@ -19,7 +19,7 @@ export async function uninstall(namespace: string, name: string, cluster: string
  * @param {string} templateName
  * @param {string} serviceAccountName
  * @param {string} imagePullSecrets
- * @param {Boolean} cluster
+ * @param {boolean} cluster
  */
 export async function run(
     namespace: string,

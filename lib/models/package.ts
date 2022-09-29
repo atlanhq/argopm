@@ -1,11 +1,13 @@
-import { yellow, blue, bright, lightCyan } from "ansicolor";
-import { readFile } from "node:fs/promises";
-import { PackageInfo } from "./info";
-import { Argument } from "./argument";
-import { Template } from "./template";
-import { constants } from "../constants";
+import { CoreV1Api, CustomObjectsApi, KubeConfig, V1ConfigMap, V1Secret } from "@kubernetes/client-node";
+import { blue, bright, lightCyan, yellow } from "ansicolor";
 import { load } from "js-yaml";
-import { KubeConfig, CoreV1Api, CustomObjectsApi, V1ConfigMap, V1Secret } from "@kubernetes/client-node";
+import { readFile } from "node:fs/promises";
+import { constants } from "../constants";
+import { K8sApiResponse as K8sApiListResponse } from "../k8s";
+import { Argument } from "./argument";
+import { PackageInfo } from "./info";
+import { Parameter } from "./parameter";
+import { Template } from "./template";
 
 const kc = new KubeConfig();
 kc.loadFromDefault();
@@ -25,7 +27,7 @@ export class Package {
      * Create an Argo Package object
      * @param {Object} k8sYaml
      */
-    constructor(k8sYaml) {
+    constructor(k8sYaml: { metadata: any; spec: any }) {
         this.metadata = k8sYaml.metadata;
         this.spec = k8sYaml.spec;
         this.info = new PackageInfo(this.metadata.labels);
@@ -36,9 +38,9 @@ export class Package {
 
     /**
      * Get package info
-     * @returns {Promise<string>}
+     * @returns
      */
-    packageInfo(namespace) {
+    async packageInfo(namespace: string) {
         let info = `${this.info.info()}\n`;
 
         info += `${yellow("Executable:")} ${lightCyan(`${this.isExecutable}`)}\n`;
@@ -51,60 +53,58 @@ export class Package {
         });
         info += templatesInfo;
 
-        return this.pipelines(namespace)
-            .then((pipelines) => {
-                let pipelinesInfo = blue(bright("\nPipelines: \n"));
-                pipelines.forEach((pipeline) => {
-                    pipelinesInfo += `- ${yellow(pipeline.metadata.name)}\n`;
-                });
-                info += pipelinesInfo;
-                return this.configMaps(namespace);
-            })
-            .then((configMaps) => {
-                let configMapInfo = blue(bright("\nConfig Maps: \n"));
-                configMaps.forEach((configMap) => {
-                    configMapInfo += `- ${yellow(configMap.metadata?.name)}\n`;
-                });
-                info += configMapInfo;
-                return this.secrets(namespace);
-            })
-            .then((secrets) => {
-                if (secrets.length != 0) {
-                    let secretInfo = blue(bright("\nSecrets: \n"));
-                    secrets.forEach((secret) => {
-                        secretInfo += `- ${yellow(secret.metadata?.name)}\n`;
-                    });
-                    info += secretInfo;
-                }
-                return this.cronWorkflows(namespace);
-            })
-            .then((cronWorkflows) => {
-                let cronWorkflowInfo = blue(bright("\nCron Workflows: \n"));
-                cronWorkflows.forEach((cronWorkflow) => {
-                    const cronString = cronWorkflow.spec.schedule;
-                    const cronTimezone = cronWorkflow.spec.timezone;
-                    cronWorkflowInfo += `- Name: ${yellow(cronWorkflow.metadata.name)}, Schedule: ${lightCyan(
-                        cronString
-                    )}, Timezone: ${lightCyan(cronTimezone)}\n`;
-                });
-                info += cronWorkflowInfo;
-                return info;
+        const pipelines = await this.pipelines(namespace);
+        let pipelinesInfo = blue(bright("\nPipelines: \n"));
+        pipelines.forEach((pipeline: { metadata: { name: string | number } }) => {
+            pipelinesInfo += `- ${yellow(pipeline.metadata.name)}\n`;
+        });
+        info += pipelinesInfo;
+
+        const configMaps = await this.configMaps(namespace);
+        let configMapInfo = blue(bright("\nConfig Maps: \n"));
+        configMaps.forEach((configMap) => {
+            configMapInfo += `- ${yellow(configMap.metadata?.name)}\n`;
+        });
+        info += configMapInfo;
+
+        const secrets = await this.secrets(namespace);
+        if (secrets.length != 0) {
+            let secretInfo = blue(bright("\nSecrets: \n"));
+            secrets.forEach((secret) => {
+                secretInfo += `- ${yellow(secret.metadata?.name)}\n`;
             });
+            info += secretInfo;
+        }
+
+        const cronWorkflows = await this.cronWorkflows(namespace);
+        let cronWorkflowInfo = blue(bright("\nCron Workflows: \n"));
+        cronWorkflows.forEach(
+            (cronWorkflow: { spec: { schedule: any; timezone: any }; metadata: { name: string | number } }) => {
+                const cronString = cronWorkflow.spec.schedule;
+                const cronTimezone = cronWorkflow.spec.timezone;
+                cronWorkflowInfo += `- Name: ${yellow(cronWorkflow.metadata.name)}, Schedule: ${lightCyan(
+                    cronString
+                )}, Timezone: ${lightCyan(cronTimezone)}\n`;
+            }
+        );
+        info += cronWorkflowInfo;
+
+        return info;
     }
 
     /**
      * @param {string} templateName
      */
-    templateInfo(templateName) {
+    templateInfo(templateName: string) {
         return this.templateForName(templateName).info();
     }
 
     /**
      *
      * @param name
-     * @returns {Promise<{Template}>}
+     * @returns
      */
-    templateForName(name) {
+    templateForName(name: string) {
         const chosenTemplate = this.templates.find((template) => template.name === name);
 
         if (!chosenTemplate) {
@@ -120,12 +120,12 @@ export class Package {
      * 1. Delete all dependencies
      * 2. Delete the workflow template
      * 3. Delete the config maps
-     * @returns {Promise<{response: http.IncomingMessage, body: object}>}
+     * @returns
      */
-    async delete(cluster, namespace) {
+    async delete(cluster: boolean, namespace: string) {
         for (const dependencyPackage of await this.dependencies(cluster)) {
             console.log(`Deleting dependent package ${dependencyPackage.info.name}`);
-            dependencyPackage.delete(cluster, namespace);
+            await dependencyPackage.delete(cluster, namespace);
         }
 
         console.log(`Deleting config maps for package ${this.metadata.name}`);
@@ -166,13 +166,13 @@ export class Package {
 
     /**
      * Get all dependencies of the packages installed
-     * @param {Boolean} cluster
+     * @param {boolean} cluster
      * @returns
      */
     async dependencies(cluster: boolean) {
         let kind = constants.ARGO_WORKFLOW_TEMPLATES_KIND;
         let plural = `${kind.toLowerCase()}s`;
-        let response;
+        let response: K8sApiListResponse;
 
         if (cluster) {
             kind = constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND;
@@ -205,11 +205,11 @@ export class Package {
 
     /**
      * Get all dependencies
-     * @returns {Promise<[Package]>}
+     * @returns
      */
-    getDependentPackagesFromListResponse(response) {
+    getDependentPackagesFromListResponse(response: K8sApiListResponse) {
         const packages: Package[] = [];
-        response.body.items.forEach((template) => {
+        response.body.items.forEach((template: any) => {
             const argoPackage = new Package(template);
             if (argoPackage.info.name !== this.info.name) {
                 packages.push(new Package(template));
@@ -222,7 +222,7 @@ export class Package {
      * Returns all config maps associated with the package
      * @returns
      */
-    async configMaps(namespace): Promise<V1ConfigMap[]> {
+    async configMaps(namespace: string): Promise<V1ConfigMap[]> {
         const response = await coreK8sApi.listNamespacedConfigMap(
             namespace,
             undefined,
@@ -238,7 +238,7 @@ export class Package {
      * Deletes all configmaps associated with the package
      * @returns
      */
-    async deleteConfigMaps(namespace) {
+    async deleteConfigMaps(namespace: any) {
         const configMaps = await this.configMaps(namespace);
         for (const configMap of configMaps) {
             const metadata = configMap.metadata;
@@ -252,9 +252,9 @@ export class Package {
 
     /**
      * Returns all secrets associated with the package
-     * @returns {Promise<Array<V1Secret>>}
+     * @returns
      */
-    async secrets(namespace): Promise<V1Secret[]> {
+    async secrets(namespace: string): Promise<V1Secret[]> {
         const response = await coreK8sApi.listNamespacedSecret(
             namespace,
             undefined,
@@ -268,9 +268,9 @@ export class Package {
 
     /**
      * Deletes all secrets associated with the package
-     * @returns {Promise<Any>}
+     * @returns
      */
-    async deleteSecrets(namespace) {
+    async deleteSecrets(namespace: any) {
         const secrets = await this.secrets(namespace);
         for (const secret of secrets) {
             const metadata = secret.metadata;
@@ -283,9 +283,9 @@ export class Package {
 
     /**
      * Returns all piplines associated with the package
-     * @returns {Promise<Array<Object>>}
+     * @returns
      */
-    async pipelines(namespace) {
+    async pipelines(namespace: string) {
         const plural = `${constants.ARGO_DATAFLOW_KIND.toLowerCase()}s`;
         const response = await customK8sApi.listNamespacedCustomObject(
             constants.ARGO_DATAFLOW_K8S_API_GROUP,
@@ -303,9 +303,9 @@ export class Package {
 
     /**
      * Deletes all pipelines associated with the package
-     * @returns {Promise<Any>}
+     * @returns
      */
-    async deletePipelines(namespace) {
+    async deletePipelines(namespace: any) {
         const plural = `${constants.ARGO_DATAFLOW_KIND.toLowerCase()}s`;
         for (const pipeline of await this.pipelines(namespace)) {
             const metadata = pipeline.metadata;
@@ -321,9 +321,9 @@ export class Package {
 
     /**
      * Returns all cron workflows associated with the package
-     * @returns {Promise<Array<CronWorkflow>>}
+     * @returns
      */
-    async cronWorkflows(namespace) {
+    async cronWorkflows(namespace: string) {
         const plural = `${constants.ARGO_CRON_WORKFLOW_KIND.toLowerCase()}s`;
         const response = await customK8sApi.listNamespacedCustomObject(
             constants.ARGO_K8S_API_GROUP,
@@ -341,9 +341,9 @@ export class Package {
 
     /**
      * Deletes cronworkflows associated with the package
-     * @returns {Promise<Any>}
+     * @returns
      */
-    async deleteCronWorkflows(namespace) {
+    async deleteCronWorkflows(namespace: any) {
         const plural = `${constants.ARGO_CRON_WORKFLOW_KIND.toLowerCase()}s`;
         for (const cronWorkflow of await this.cronWorkflows(namespace)) {
             const metadata = cronWorkflow.metadata;
@@ -362,11 +362,17 @@ export class Package {
      * @param {Object} args
      * @param {string} serviceAccountName
      * @param {string} imagePullSecrets
-     * @param {Boolean} cluster
+     * @param {boolean} cluster
      * @param {string} namespace
-     * @returns {PromiseLike<{response: http.IncomingMessage, body: object}>}
+     * @returns
      */
-    async run(args, serviceAccountName, imagePullSecrets, cluster, namespace) {
+    async run(
+        args: { parameters: Parameter[] },
+        serviceAccountName: string,
+        imagePullSecrets: string,
+        cluster: boolean,
+        namespace: string
+    ) {
         if (!this.isExecutable) {
             throw "Package is not runnable";
         }
@@ -399,11 +405,18 @@ export class Package {
      * @param {Object} args
      * @param {string} serviceAccountName
      * @param {string} imagePullSecrets
-     * @param {Boolean} cluster
+     * @param {boolean} cluster
      * @param {string} namespace
-     * @returns {Promise<{response: http.IncomingMessage, body: object}>}
+     * @returns
      */
-    async runTemplate(templateName, args, serviceAccountName, imagePullSecrets, cluster, namespace) {
+    async runTemplate(
+        templateName: string,
+        args: object,
+        serviceAccountName: string,
+        imagePullSecrets: string,
+        cluster: boolean,
+        namespace: string
+    ) {
         const template = this.templateForName(templateName);
         const workflow = template.generateWorkflow(
             this.metadata.name,
@@ -431,14 +444,15 @@ export class Package {
 
     /**
      * Get install package
-     * @param {String} namespace
-     * @param {String} packageName
-     * @param {Boolean} cluster
-     * @returns {Promise<Package>}
+     * @param {string} namespace
+     * @param {string} packageName
+     * @param {boolean} cluster
+     * @returns
      */
-    static async info(namespace, packageName, cluster) {
-        let response;
+    static async info(namespace: string, packageName: string, cluster: boolean) {
+        let response: K8sApiListResponse;
         let plural = `${constants.ARGO_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
+
         if (cluster) {
             plural = `${constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
             response = await customK8sApi.listClusterCustomObject(
@@ -473,12 +487,12 @@ export class Package {
 
     /**
      * Get all installed packages in the namespace
-     * @param {String} namespace
-     * @param {Boolean} cluster
-     * @returns {Promise<[Package]>}
+     * @param {string} namespace
+     * @param {boolean} cluster
+     * @returns
      */
-    static async list(namespace, cluster) {
-        let response;
+    static async list(namespace: string, cluster: boolean) {
+        let response: K8sApiListResponse;
         let plural = `${constants.ARGO_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
 
         if (cluster) {
@@ -494,7 +508,7 @@ export class Package {
                 Package.getInstallerLabel()
             );
         } else {
-            response = customK8sApi.listNamespacedCustomObject(
+            response = await customK8sApi.listNamespacedCustomObject(
                 constants.ARGO_K8S_API_GROUP,
                 constants.ARGO_K8S_API_VERSION,
                 namespace,
@@ -506,14 +520,6 @@ export class Package {
                 Package.getInstallerLabel()
             );
         }
-        return handleListResponse(response);
+        return response.body.items.map((template: any) => new Package(template));
     }
-}
-
-/**
- * Handle k8s list response
- * @returns {Promise<[Package]>}
- */
-function handleListResponse(response): Package[] {
-    return response.body.items.map((template) => new Package(template));
 }

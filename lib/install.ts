@@ -1,4 +1,4 @@
-import { K8sInstaller } from "./k8s";
+import { K8sInstaller, K8sInstallerOptionsType } from "./k8s";
 import { S3 } from "./s3";
 import { listDirs, deleteDir } from "./utils";
 import { readFileSync, existsSync } from "fs";
@@ -11,32 +11,34 @@ import npa = require("npm-package-arg");
 /**
  * Downloads the given package
  *
- * @param {String} prefixPath Directory to install
- * @param {String} packageName Argo package name
- * @param {String} registry Argo Package registry
- * @param {String} saveParam Save parameter
+ * @param {string} prefixPath Directory to install
+ * @param {string} packageName Argo package name
+ * @param {string} registry Argo Package registry
+ * @param {string} saveParam Save parameter
  */
-const npmInstall = function (prefixPath: string, packageName: string, registry: string, saveParam: string) {
+const npmInstall = async function (prefixPath: string, packageName: string, registry: string, saveParam: string) {
     if (packageName === ".") {
-        return system(`NPM_CONFIG_REGISTRY=${registry} npm i ${saveParam} --prefix ${prefixPath} --force`);
+        return await system(`NPM_CONFIG_REGISTRY=${registry} npm i ${saveParam} --prefix ${prefixPath} --force`);
     }
-    return system(`NPM_CONFIG_REGISTRY=${registry} npm i ${packageName} ${saveParam} --prefix ${prefixPath} --force`);
+    return await system(
+        `NPM_CONFIG_REGISTRY=${registry} npm i ${packageName} ${saveParam} --prefix ${prefixPath} --force`
+    );
 };
 
 /**
  * Install a global package
- *
- * @param {string} packageName
- * @param {string} registry
- * @param {string} namespace
- * @param {boolean} cluster
+ * @param  {string} packageName
+ * @param  {string} registry
+ * @param  {string} namespace
+ * @param  {boolean} cluster
+ * @param  {K8sInstallerOptionsType} options
  */
 export const installGlobal = async function (
     packageName: string,
     registry: string,
     namespace: string,
     cluster: boolean,
-    options
+    options: K8sInstallerOptionsType
 ) {
     let dirPath = `/tmp/argopm/${packageName}`;
     dirPath = dirPath.split("@").slice(0, -1).join("@");
@@ -48,22 +50,31 @@ export const installGlobal = async function (
 
 /**
  * Get Package name from path
- * @param path
- * @returns {string}
+ * @param  {string} path
+ * @returns string
  */
-const packageNameFromPath = function (path): string {
+const packageNameFromPath = function (path: string): string {
     const packageJSONFilePath = `${path}/package.json`;
     const packageObject = JSON.parse(readFileSync(packageJSONFilePath, "utf-8"));
     return `${packageObject.name}@${packageObject.version}`;
 };
 
+/**
+ * Execute k8sInstaller and dashboardInstaller.
+ * @param  {string} dir
+ * @param  {boolean} cluster
+ * @param  {string} namespace
+ * @param  {string} parentPackageName
+ * @param  {string} registry
+ * @param  {K8sInstallerOptionsType} options
+ */
 const processInstallers = (
     dir: string,
     cluster: boolean,
     namespace: string,
     parentPackageName: string,
     registry: string,
-    options: any
+    options: K8sInstallerOptionsType
 ) => {
     // Upload Static Files
     const s3Uploader = new S3(
@@ -100,7 +111,7 @@ export const install = async function (
     namespace: string,
     save: boolean,
     cluster: boolean,
-    options,
+    options: K8sInstallerOptionsType,
     dirPath: string = process.cwd()
 ) {
     // dirPath = "/Users/amit/Documents/marketplace-packages/atlan-atlas";
@@ -144,14 +155,10 @@ export const install = async function (
         if (dir && dir?.split("/").slice(-1)[0].startsWith("@")) {
             const innerDirs = await listDirs(dir);
             innerDirs.forEach((innerDir) => {
-                if (innerDir) {
-                    processInstallers(innerDir, cluster, namespace, parentPackageName, registry, options);
-                }
+                processInstallers(innerDir, cluster, namespace, parentPackageName, registry, options);
             });
         } else {
-            if (dir) {
-                processInstallers(dir, cluster, namespace, parentPackageName, registry, options);
-            }
+            processInstallers(dir, cluster, namespace, parentPackageName, registry, options);
         }
     });
 

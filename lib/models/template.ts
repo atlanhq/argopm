@@ -4,34 +4,47 @@ import { load } from "js-yaml";
 import { blue, bright } from "ansicolor";
 import { GenericK8sSpecType } from "../k8s";
 
-export class Template {
+type TemplateObjectType = {
     name: string;
     inputs: any;
+};
+
+export class Template {
+    name: string;
+    inputs: Input;
 
     /**
      * @param {Object} templateObj
      */
-    constructor(templateObj: { name: any; inputs: any }) {
+    constructor(templateObj: TemplateObjectType) {
         this.name = templateObj.name;
         this.inputs = new Input(templateObj.inputs);
     }
-
-    info() {
+    /**
+     * Get template info.
+     * @returns string
+     */
+    info(): string {
         let templateHelp = blue(`Template: ${bright(this.name)}\n`);
         templateHelp += `${this.inputs.info()}`;
         return templateHelp;
     }
 
     /**
-     * Run the template
-     * @param {string} packageName
-     * @param {Object} args
-     * @param {string} serviceAccountName
-     * @param {string} imagePullSecrets
-     * @param {Boolean} cluster
-     * @returns {PromiseLike<{Object}>}
+     * Generate the Workflow manifest
+     * @param  {string} packageName
+     * @param  {object} args
+     * @param  {string} serviceAccountName
+     * @param  {string} imagePullSecrets
+     * @param  {boolean} cluster
      */
-    async generateWorkflow(packageName: any, args: any, serviceAccountName: any, imagePullSecrets: any, cluster: any) {
+    async generateWorkflow(
+        packageName: string,
+        args: object,
+        serviceAccountName: string,
+        imagePullSecrets: string,
+        cluster: boolean
+    ) {
         const runtimeInputs = new Input(args);
 
         this.inputs.checkRequiredArgs(runtimeInputs);
@@ -39,9 +52,15 @@ export class Template {
         const workflow: GenericK8sSpecType = load(data.toString());
 
         workflow.metadata.generateName = `${this.name}-`;
-        if (serviceAccountName) workflow.spec.serviceAccountName = serviceAccountName;
+        if (serviceAccountName) {
+            workflow.spec.serviceAccountName = serviceAccountName;
+        }
+
         workflow.spec.entrypoint = this.name;
-        if (imagePullSecrets) workflow.spec.imagePullSecrets = [{ name: imagePullSecrets }];
+        if (imagePullSecrets) {
+            workflow.spec.imagePullSecrets = [{ name: imagePullSecrets }];
+        }
+
         workflow.spec.templates[0].name = this.name;
         workflow.spec.templates[0].dag.tasks[0].name = `call-${this.name}`;
         workflow.spec.templates[0].dag.tasks[0].templateRef.name = packageName;
@@ -53,11 +72,10 @@ export class Template {
     }
 
     /**
-     * Generate Templates
-     * @param {[Object]} templateArray
-     * @returns
+     * Generate a list of templates
+     * @param  {TemplateObjectType[]} templateArray
      */
-    static generate(templateArray: any[]) {
+    static generate(templateArray: TemplateObjectType[]) {
         return templateArray.map((templateObj: any) => new Template(templateObj));
     }
 }

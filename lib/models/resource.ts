@@ -1,10 +1,11 @@
 import { constants } from "../constants";
 import { compare } from "compare-versions";
+import { GenericK8sSpecType } from "../k8s";
 
 export class Resource {
-    resource: any;
-    version: any;
-    resourceVersion: any;
+    resource: GenericK8sSpecType;
+    version: string;
+    resourceVersion: string;
     metadata: any;
 
     /**

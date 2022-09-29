@@ -4,6 +4,7 @@
   "description": "Argo package manager",
   "main": "./lib/index.ts",
   "scripts": {
+    "build": "esbuild ./bin/install.ts --bundle --platform=node --outfile=./dist/install.js",
     "test": "jest --detectOpenHandles",
     "prettier": "prettier --write .",
     "eslint": "eslint --fix .",
@@ -21,9 +22,7 @@
     "dotenv": "^16.0.2",
     "js-yaml": "^4.1.0",
     "npm-package-arg": "^9.1.0",
-    "npm-remote-ls": "^1.3.2",
     "rimraf": "^3.0.2",
-    "stream-buffers": "^3.0.2",
     "system-commands": "^1.1.7",
     "yargs": "^17.5.1",
     "yargs-parser": ">=21.1.1"
@@ -37,6 +36,7 @@
     "@types/yargs": "^17.0.13",
     "@typescript-eslint/eslint-plugin": "^5.38.1",
     "@typescript-eslint/parser": "^5.38.1",
+    "esbuild": "^0.15.9",
     "eslint": "^8.24.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-jest": "^27.0.4",
@@ -45,6 +45,7 @@
     "pre-commit": "^1.2.2",
     "prettier": "^2.7.1",
     "ts-jest": "^29.0.2",
+    "ts-node": "^10.9.1",
     "typescript": "^4.8.4"
   },
   "lint-staged": {

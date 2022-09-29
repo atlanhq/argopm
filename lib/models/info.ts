@@ -3,7 +3,7 @@ import { constants } from "../constants";
 
 /**
  * Encode a string
- * @param {String} str
+ * @param {string} str
  */
 const encode = function (str: string) {
     return str.replace(/@/g, "-").replace(/\//g, "-").replace(/:/g, "-");
@@ -11,7 +11,7 @@ const encode = function (str: string) {
 
 /**
  * Special encode a string
- * @param {String} str
+ * @param {string} str
  */
 const specialEncode = function (str: string) {
     if (str === ".") return "";
@@ -20,7 +20,7 @@ const specialEncode = function (str: string) {
 
 /**
  * Decode a string
- * @param {String} str
+ * @param {string} str
  */
 const decode = function (str: string) {
     return str
@@ -29,17 +29,32 @@ const decode = function (str: string) {
         .replace(/c-o-l-o-n/g, ":");
 };
 
+export type PackageObjectType = {
+    config: {
+        annotations: { [key: string]: string };
+        labels: { [key: string]: string };
+    };
+    name: string;
+    version: string;
+    description: string;
+    homepage: string;
+    bugs: { email: string };
+    author: { name: string };
+    repository: { url: string };
+    keywords: string[];
+};
+
 export class PackageInfo {
-    name: any;
-    version: any;
-    parent: any;
-    registry: any;
+    name: string;
+    version: string;
+    parent: string;
+    registry: string;
 
     /**
      * Create package info object
      * @param {Object} labels K8s labels
      */
-    constructor(labels: { [x: string]: any }) {
+    constructor(labels: { [x: string]: string }) {
         if (labels[constants.ARGOPM_INSTALLER_LABEL] !== constants.ARGOPM_INSTALLER_LABEL_VALUE) {
             throw "Not a ArgoPM package";
         }
@@ -62,7 +77,7 @@ export class PackageInfo {
      * Get Dependency label
      * @returns {string}
      */
-    getDependencyLabel() {
+    getDependencyLabel(): string {
         const parentName = encode(`${this.name}@${this.version}`);
         return `${constants.ARGOPM_LIBRARY_PARENT_LABEL}=${parentName}`;
     }
@@ -71,18 +86,18 @@ export class PackageInfo {
      * Get Package label
      * @returns {string}
      */
-    getPackageLabel() {
+    getPackageLabel(): string {
         return `${constants.ARGOPM_LIBRARY_NAME_LABEL}=${encode(this.name)}`;
     }
 
     /**
      * Create the K8s labels object
-     * @param {String} name
-     * @param {String} version
-     * @param {String} parent
-     * @param {String} registry
+     * @param {string} name
+     * @param {string} version
+     * @param {string} parent
+     * @param {string} registry
      */
-    static createK8sLabels = function (name: any, version: any, parent: any, registry: any) {
+    static createK8sLabels = function (name: string, version: string, parent: string, registry: string) {
         const labels = {};
         labels[constants.ARGOPM_INSTALLER_LABEL] = encode(constants.ARGOPM_INSTALLER_LABEL_VALUE);
         labels[constants.ARGOPM_LIBRARY_NAME_LABEL] = specialEncode(name);
@@ -99,9 +114,9 @@ export class PackageInfo {
      * @param {string} registry
      */
     static createK8sLabelsForPackage = function (
-        packageObject: { config: { labels: any }; name: any; version: any },
-        parentPackageName: any,
-        registry: any
+        packageObject: PackageObjectType,
+        parentPackageName: string,
+        registry: string
     ) {
         let labels = {};
         if (packageObject.config && packageObject.config.labels) {
@@ -123,18 +138,9 @@ export class PackageInfo {
      * @param {string} registry
      */
     static createK8sAnnotationsForPackage = function (
-        packageObject: {
-            config: { annotations: any };
-            name: any;
-            description: any;
-            homepage: string;
-            bugs: { email: string };
-            author: { name: any };
-            repository: { url: any };
-            keywords: any;
-        },
-        parentPackageName: any,
-        registry: any
+        packageObject: PackageObjectType,
+        parentPackageName: string,
+        registry: string
     ) {
         let annotations = {};
         if (packageObject.config && packageObject.config.annotations) {
@@ -172,7 +178,7 @@ export class PackageInfo {
      * @param {string} packageName
      * @returns {string}
      */
-    static getPackageLabel = function (packageName: string) {
+    static getPackageLabel = function (packageName: string): string {
         return `${constants.ARGOPM_LIBRARY_NAME_LABEL}=${specialEncode(packageName)}`;
     };
 }

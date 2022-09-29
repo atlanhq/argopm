@@ -1,12 +1,15 @@
-import { readdir, stat } from "node:fs/promises";
 import { join } from "path";
+import { readdir, stat, access } from "node:fs/promises";
+import { promisify } from "node:util";
 
 import rimraf = require("rimraf");
+import { Parameter } from "./models/parameter";
+const rimrafPromise = promisify(rimraf);
 
 /**
  * Recursively walk through the folder and return all file paths
  * @param dir
- * @returns {Promise<[string]>}
+ * @returns
  */
 export async function walk(dir: string) {
     const files = await readdir(dir);
@@ -19,7 +22,7 @@ export async function walk(dir: string) {
         })
     );
 
-    return filesWalked.reduce((all: string | any[], folderContents: any) => all.concat(folderContents), []);
+    return filesWalked.reduce((all: string[], folderContents: string[]) => all.concat(folderContents), []);
 }
 
 /**
@@ -27,7 +30,7 @@ export async function walk(dir: string) {
  * @param dir
  * @returns
  */
-export async function listDirs(dir: string): Promise<(string | undefined)[]> {
+export async function listDirs(dir: string) {
     const paths = await readdir(dir);
     return await Promise.all(
         paths.map(async (file: string) => {
@@ -43,9 +46,10 @@ export async function listDirs(dir: string): Promise<(string | undefined)[]> {
  * @param dir
  * @returns
  */
-export function deleteDir(dir: any) {
+export async function deleteDir(dir: string) {
     // TODO
-    return rimraf(dir);
+    await access(dir);
+    return await rimrafPromise(dir);
 }
 
 /**
@@ -55,19 +59,21 @@ export function deleteDir(dir: any) {
  */
 export function generateArguments(args: string[]) {
     const index = args.indexOf("--");
-    const parameters: { name: string; value: any }[] = [];
+    const parameters: Parameter[] = [];
 
     if (index === -1) return { parameters: parameters };
 
-    let key;
+    let key: string;
     args.slice(index + 1).forEach((arg) => {
         if (!key) {
             key = arg.replace("--", "");
         } else {
-            parameters.push({
-                name: key,
-                value: arg,
-            });
+            parameters.push(
+                new Parameter({
+                    name: key,
+                    value: arg,
+                })
+            );
             key = undefined;
         }
     });

@@ -1,13 +1,18 @@
 import { Parameter } from "./parameter";
 import { yellow } from "ansicolor";
 
+export type InputObjectType = {
+    parameters?: any;
+    artifacts?: any;
+};
+
 export class Input {
     parameters: Parameter[];
 
     /**
      * @param {Object} inputsObj
      */
-    constructor(inputsObj) {
+    constructor(inputsObj: InputObjectType) {
         if (!inputsObj) {
             inputsObj = {
                 parameters: undefined,
@@ -31,7 +36,7 @@ export class Input {
      * Check the requirement parameters to run
      * @param {Input} input
      */
-    checkRequiredArgs(input) {
+    checkRequiredArgs(input: Input) {
         this.parameters.forEach((parameter) => {
             if (parameter.isRequired && input.getParameterValue(parameter.name) === undefined) {
                 throw new Error(`Required parameter missing '${parameter.name}'`);
@@ -45,7 +50,7 @@ export class Input {
      * @param {string} key
      * @returns {string}
      */
-    getParameterValue(key) {
+    getParameterValue(key: string): string {
         let value = undefined;
         this.parameters.forEach((parameter) => {
             if (parameter.name === key) value = parameter.value;

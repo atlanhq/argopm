@@ -13,11 +13,11 @@ import { walk } from "./utils";
  * 4. Change name to the folder name
  * @param {boolean} force
  */
-export const init = async (force: boolean, inputPackageName: unknown) => {
+export const init = async (force: boolean, inputPackageName: string) => {
     // const dirPath = "/tmp/test-package";
     const dirPath = process.cwd();
     const pathComponents = dirPath.split("/");
-    const packageName = inputPackageName != "." || pathComponents[pathComponents.length - 1];
+    const packageName = inputPackageName != "." ? inputPackageName : pathComponents[pathComponents.length - 1];
     const files = await readdir(dirPath);
 
     if (!force && (files.length !== 0 || files.includes("package.json"))) {
@@ -34,10 +34,9 @@ export const init = async (force: boolean, inputPackageName: unknown) => {
     return packageName;
 };
 
-function replaceInFile(filePath: PathLike | FileHandle, searchText: string | RegExp, replaceText: string) {
+async function replaceInFile(filePath: PathLike | FileHandle, searchText: string | RegExp, replaceText: string) {
     const re = new RegExp(searchText, "g");
-    return readFile(filePath, "utf-8").then((data) => {
-        const result = data.replace(re, replaceText);
-        return writeFile(filePath, result, "utf8");
-    });
+    const data = await readFile(filePath, "utf-8");
+    const result = data.replace(re, replaceText);
+    return await writeFile(filePath, result, "utf8");
 }

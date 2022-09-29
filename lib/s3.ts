@@ -1,14 +1,14 @@
-import { S3Client } from "@aws-sdk/client-s3";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import yaml from "js-yaml";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
+import { load } from "js-yaml";
+import { readFileSync } from "node:fs";
+import { Result } from "npm-package-arg";
 import { walk } from "./utils";
-import k8s from "@kubernetes/client-node";
-import fs from "fs";
 
 export class S3 {
     configMapName: string;
     argoNamespace: string;
-    package: any;
+    package: Result;
     client: S3Client;
     bucketName: string;
     s3KeyPrefix: string;
@@ -16,11 +16,11 @@ export class S3 {
     /**
      * Provides functionality to upload files in the `static` sub directory to AWS S3
      *
-     * @param {String} configMapName Name of the configmap with bucket and region data in the Argo instance
-     * @param {String} argoNamespace K8s namespace where theh configmap exists
-     * @param {String} package Package info
+     * @param {string} configMapName Name of the configmap with bucket and region data in the Argo instance
+     * @param {string} argoNamespace K8s namespace where theh configmap exists
+     * @param {string} package Package info
      */
-    constructor(configMapName, argoNamespace, packageConfig) {
+    constructor(configMapName: string, argoNamespace: string, packageConfig: Result) {
         this.configMapName = configMapName;
         this.argoNamespace = argoNamespace;
         this.package = packageConfig;
@@ -40,18 +40,18 @@ export class S3 {
     /**
      * Fetch the workflow controller configmap and return the artifactory (S3) bucket name and region
      *
-     * @param {String} configMapName Name of the configmap with bucket and region data in the Argo instance
-     * @param {String} argoNamespace K8s namespace where theh workflow controller configmap exists
+     * @param {string} configMapName Name of the configmap with bucket and region data in the Argo instance
+     * @param {string} argoNamespace K8s namespace where theh workflow controller configmap exists
      */
-    async getS3ConfigFromArgo(configMapName, argoNamespace) {
-        const kc = new k8s.KubeConfig();
+    async getS3ConfigFromArgo(configMapName: string, argoNamespace: string) {
+        const kc = new KubeConfig();
         kc.loadFromDefault();
 
-        const coreK8sApi = kc.makeApiClient(k8s.CoreV1Api);
+        const coreK8sApi = kc.makeApiClient(CoreV1Api);
         const argoWorkflowControllerConfigMap = await coreK8sApi.readNamespacedConfigMap(configMapName, argoNamespace);
         if (argoWorkflowControllerConfigMap.body.data) {
-            const bucket: string = yaml.load(argoWorkflowControllerConfigMap.body.data["bucket"]) as string;
-            const region: string = yaml.load(argoWorkflowControllerConfigMap.body.data["region"]) as string;
+            const bucket: string = load(argoWorkflowControllerConfigMap.body.data["bucket"]) as string;
+            const region: string = load(argoWorkflowControllerConfigMap.body.data["region"]) as string;
             return {
                 bucket,
                 region,
@@ -63,11 +63,10 @@ export class S3 {
 
     /**
      * Upload a given file to S3
-     *
-     * @param {String} path Absolute path of file
+     * @param  {string} path
      */
-    uploadFile(path) {
-        const fileContent = fs.readFileSync(path, {
+    async uploadFile(path: string) {
+        const fileContent = readFileSync(path, {
             encoding: "utf-8",
             flag: "r",
         });
@@ -86,27 +85,20 @@ export class S3 {
             Body: fileContent,
         };
 
-        return this.client.send(new PutObjectCommand(params)).catch((err) => {
-            throw err;
-        });
+        return await this.client.send(new PutObjectCommand(params));
     }
 
     /**
      * Accepts a directory path and recursively uploads all the files in the `static` folder
      *
-     * @param {String} dirPath Absolute path of the directory
+     * @param {string} dirPath Absolute path of the directory
      */
-    uploadStaticFiles(dirPath) {
-        try {
-            const dirs = walk(`${dirPath}/static`).filter((dir) => !dir.endsWith(".md"));
-            return dirs.map((dir) => this.uploadFile(dir));
-        } catch (err) {
+    async uploadStaticFiles(dirPath: string) {
+        const dirs = await walk(`${dirPath}/static`).filter((dir: string) => !dir.endsWith(".md"));
+        return await Promise.all(dirs.map((dir: any) => this.uploadFile(dir))).catch((err) => {
             if (err.code !== "ENOENT") {
                 throw err;
             }
-            return;
-        }
+        });
     }
 }
-
-exports.S3 = S3;

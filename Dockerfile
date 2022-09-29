@@ -1,11 +1,11 @@
-FROM node:16-alpine
+FROM node:18-bullseye-slim as builder
+WORKDIR /app
+COPY . /app
+RUN npm install && npm build
 
-RUN mkdir /app
-
+FROM node:18-bullseye-slim as runtime
 WORKDIR /app
 
-COPY . /app
+COPY --from=builder /app/dist/install.js /app
 
-RUN npm link
-
-ENTRYPOINT ["argopm"]
+CMD ["./install.js"]

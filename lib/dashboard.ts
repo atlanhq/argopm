@@ -1,19 +1,21 @@
 import axios from "axios";
-import fs from "fs";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
+import { existsSync } from "node:fs";
+import { readdir, readFile } from "node:fs/promises";
+import { PackageObjectType } from "./models/info";
 
 dotenv.config();
 
 export class DashboardInstaller {
-    argoPackage: any;
-    packagePath: any;
+    argoPackage: PackageObjectType;
+    packagePath: string;
 
     /**
      * Installs the dashboards for the package
      * @param {Package} argoPackage
-     * @param {String} packagePath Argo package path
+     * @param {string} packagePath Argo package path
      */
-    constructor(argoPackage: any, packagePath: any) {
+    constructor(argoPackage: PackageObjectType, packagePath: string) {
         this.argoPackage = argoPackage;
         this.packagePath = packagePath;
     }
@@ -36,7 +38,7 @@ export class DashboardInstaller {
         }
 
         const dirPath = `${this.packagePath}/dashboards/grafana/`;
-        if (!fs.existsSync(dirPath)) {
+        if (!existsSync(dirPath)) {
             return Promise.resolve(true);
         }
 
@@ -45,26 +47,25 @@ export class DashboardInstaller {
             Authorization: `Bearer ${GRAFANA_API_TOKEN}`,
         };
 
-        return await fs.readdir(dirPath, (files: any) =>
-            files.map((fileName: string) => {
-                if (!fileName || !fileName.endsWith(".json")) return Promise.resolve(false);
-                return fs.readFile(dirPath + fileName, { encoding: "utf8" }, async (_err: any, data: string) => {
-                    console.debug(`STARTING upload for ${fileName} - POST ${GRAFANA_URL}`);
-                    try {
-                        await axios.post(GRAFANA_URL, JSON.parse(data), { headers: headers });
-                        console.debug(`DONE Uploading ${fileName} - POST ${GRAFANA_URL}`);
-                    } catch (err) {
-                        if (err.isAxiosError) {
-                            const message_1 = `FAILED Uploading ${fileName} - POST ${GRAFANA_URL}. HTTP Code: ${err.response.status}. ERROR: ${err.response.statusText}`;
-                            console.error(message_1);
-                            throw message_1;
-                        }
-                        throw err;
-                    }
-                });
-            })
-        );
+        const files = await readdir(dirPath);
+
+        return files.map(async (fileName: string) => {
+            if (!fileName || !fileName.endsWith(".json")) {
+                return;
+            }
+            const data = await readFile(dirPath + fileName, { encoding: "utf8" });
+            console.debug(`STARTING upload for ${fileName} - POST ${GRAFANA_URL}`);
+            try {
+                await axios.post(GRAFANA_URL, JSON.parse(data), { headers: headers });
+                console.debug(`DONE Uploading ${fileName} - POST ${GRAFANA_URL}`);
+            } catch (err) {
+                if (err.isAxiosError) {
+                    const message_1 = `FAILED Uploading ${fileName} - POST ${GRAFANA_URL}. HTTP Code: ${err.response.status}. ERROR: ${err.response.statusText}`;
+                    console.error(message_1);
+                    throw message_1;
+                }
+                throw err;
+            }
+        });
     }
 }
-
-exports.DashboardInstaller = DashboardInstaller;

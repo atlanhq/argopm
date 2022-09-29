@@ -1,7 +1,7 @@
 import { install } from "../lib/install";
 import { MOCK_PACKAGE_PATH, REGISTRY } from "./test-utils";
 
-describe.skip("simulate package install", () => {
+describe("simulate package install", () => {
     const namespace = "default";
     const cluster = false;
 
@@ -12,15 +12,15 @@ describe.skip("simulate package install", () => {
     });
 
     it("must install local package", async () => {
-        const result = await install(".", REGISTRY, namespace, false, cluster, { force: false }, MOCK_PACKAGE_PATH)
-            .then(() => {
-                console.log(`Argopm finished installing package`);
-                return true;
-            })
-            .catch((err) => {
-                console.error(err);
-                throw err;
-            });
+        let result: boolean;
+        try {
+            await install(".", REGISTRY, namespace, false, cluster, { force: false }, MOCK_PACKAGE_PATH);
+            console.log(`Argopm finished installing package`);
+            result = true;
+        } catch (err) {
+            console.error(err);
+            throw err;
+        }
         expect(result).toBeTruthy();
     });
 });
