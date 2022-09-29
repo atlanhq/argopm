@@ -1,12 +1,11 @@
-"use strict";
-const { yellow, blue, bright, cyan } = require("ansicolor");
+import { yellow, cyan } from "ansicolor";
 
-exports.initHelp = `
+export const initHelp = `
 Package successfully initialised. Install the current package using
 ${cyan("argopm install .")}
 `;
 
-exports.installHelp = `
+export const installHelp = `
 Package successfully installed.
 - ${cyan("List all available packages:")}
   ${yellow("argopm list")}

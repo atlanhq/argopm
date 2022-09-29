@@ -1,8 +1,9 @@
-"use strict";
-const Parameter = require("./parameter").Parameter;
-const { yellow } = require("ansicolor");
+import { Parameter } from "./parameter";
+import { yellow } from "ansicolor";
 
-class Input {
+export class Input {
+    parameters: Parameter[];
+
     /**
      * @param {Object} inputsObj
      */
@@ -31,15 +32,12 @@ class Input {
      * @param {Input} input
      */
     checkRequiredArgs(input) {
-        const capturedThis = this;
-        return new Promise(function (resolve, reject) {
-            capturedThis.parameters.forEach((parameter) => {
-                if (parameter.isRequired && input.getParameterValue(parameter.name) === undefined) {
-                    reject(`Required parameter missing '${parameter.name}'`);
-                }
-            });
-            resolve();
+        this.parameters.forEach((parameter) => {
+            if (parameter.isRequired && input.getParameterValue(parameter.name) === undefined) {
+                throw new Error(`Required parameter missing '${parameter.name}'`);
+            }
         });
+        return true;
     }
 
     /**
@@ -55,5 +53,3 @@ class Input {
         return value;
     }
 }
-
-exports.Input = Input;

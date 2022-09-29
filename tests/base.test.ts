@@ -1,6 +1,5 @@
-const { uninstall } = require("../lib/index");
-const { install, installGlobal } = require("../lib/install.js");
-const { getPackageName, MOCK_PACKAGE_PATH, REGISTRY } = require("./test-utils");
+import { install } from "../lib/install";
+import { MOCK_PACKAGE_PATH, REGISTRY } from "./test-utils";
 
 describe.skip("simulate package install", () => {
     const namespace = "default";

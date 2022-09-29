@@ -1,12 +1,18 @@
-const S3Client = require("@aws-sdk/client-s3").S3Client;
-const PutObjectCommand = require("@aws-sdk/client-s3").PutObjectCommand;
-const Promise = require("bluebird");
-const yaml = require("js-yaml");
-const walk = require("./utils").walk;
-const k8s = require("@kubernetes/client-node");
-const fs = require("fs");
+import { S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import yaml from "js-yaml";
+import { walk } from "./utils";
+import k8s from "@kubernetes/client-node";
+import fs from "fs";
 
-class S3 {
+export class S3 {
+    configMapName: string;
+    argoNamespace: string;
+    package: any;
+    client: S3Client;
+    bucketName: string;
+    s3KeyPrefix: string;
+
     /**
      * Provides functionality to upload files in the `static` sub directory to AWS S3
      *
@@ -20,12 +26,15 @@ class S3 {
         this.package = packageConfig;
     }
 
-    initialize() {
-        return this.getS3ConfigFromArgo(this.configMapName, this.argoNamespace).then(({ bucket, region }) => {
+    async initialize() {
+        const { bucket, region } = await this.getS3ConfigFromArgo(this.configMapName, this.argoNamespace);
+        if (bucket && region) {
             this.client = new S3Client({ region: region });
             this.bucketName = bucket;
             this.s3KeyPrefix = `argo-artifacts/argopm/${this.package.name}/latest/static`;
-        });
+        } else {
+            console.error("Cannot initialize, missing bucket and/or region.");
+        }
     }
 
     /**
@@ -34,26 +43,22 @@ class S3 {
      * @param {String} configMapName Name of the configmap with bucket and region data in the Argo instance
      * @param {String} argoNamespace K8s namespace where theh workflow controller configmap exists
      */
-    getS3ConfigFromArgo(configMapName, argoNamespace) {
+    async getS3ConfigFromArgo(configMapName, argoNamespace) {
         const kc = new k8s.KubeConfig();
         kc.loadFromDefault();
 
         const coreK8sApi = kc.makeApiClient(k8s.CoreV1Api);
-
-        return coreK8sApi
-            .readNamespacedConfigMap(configMapName, argoNamespace)
-            .then((argoWorkflowControllerConfigMap) => {
-                const bucket = yaml.load(argoWorkflowControllerConfigMap.body.data.bucket);
-                const region = yaml.load(argoWorkflowControllerConfigMap.body.data.region);
-
-                return {
-                    bucket,
-                    region,
-                };
-            })
-            .catch((err) => {
-                throw err;
-            });
+        const argoWorkflowControllerConfigMap = await coreK8sApi.readNamespacedConfigMap(configMapName, argoNamespace);
+        if (argoWorkflowControllerConfigMap.body.data) {
+            const bucket: string = yaml.load(argoWorkflowControllerConfigMap.body.data["bucket"]) as string;
+            const region: string = yaml.load(argoWorkflowControllerConfigMap.body.data["region"]) as string;
+            return {
+                bucket,
+                region,
+            };
+        } else {
+            return { bucket: undefined, region: undefined };
+        }
     }
 
     /**
@@ -92,17 +97,15 @@ class S3 {
      * @param {String} dirPath Absolute path of the directory
      */
     uploadStaticFiles(dirPath) {
-        return walk(`${dirPath}/static`)
-            .then((dirs) => {
-                dirs = dirs.filter((dir) => !dir.endsWith(".md"));
-                return Promise.all(dirs.map((dir) => this.uploadFile(dir)));
-            })
-            .catch((err) => {
-                if (err.code !== "ENOENT") {
-                    throw err;
-                }
-                return;
-            });
+        try {
+            const dirs = walk(`${dirPath}/static`).filter((dir) => !dir.endsWith(".md"));
+            return dirs.map((dir) => this.uploadFile(dir));
+        } catch (err) {
+            if (err.code !== "ENOENT") {
+                throw err;
+            }
+            return;
+        }
     }
 }
 

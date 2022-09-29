@@ -1,70 +1,65 @@
-const Promise = require("bluebird");
-const fs = require("fs").promises;
-const path = require("path");
-var rimraf = Promise.promisify(require("rimraf"));
+import { readdir, stat } from "node:fs/promises";
+import { join } from "path";
+
+import rimraf = require("rimraf");
 
 /**
  * Recursively walk through the folder and return all file paths
  * @param dir
  * @returns {Promise<[string]>}
  */
-async function walk(dir) {
-    let files = await fs.readdir(dir);
-    files = await Promise.all(
-        files.map(async (file) => {
-            const filePath = path.join(dir, file);
-            const stats = await fs.stat(filePath);
+export async function walk(dir: string) {
+    const files = await readdir(dir);
+    const filesWalked = await Promise.all(
+        files.map(async (file: string) => {
+            const filePath = join(dir, file);
+            const stats = await stat(filePath);
             if (stats.isDirectory()) return walk(filePath);
             else if (stats.isFile()) return filePath;
         })
     );
 
-    return files.reduce((all, folderContents) => all.concat(folderContents), []);
+    return filesWalked.reduce((all: string | any[], folderContents: any) => all.concat(folderContents), []);
 }
-
-exports.walk = walk;
 
 /**
  * Returns all directories in the given path
  * @param dir
- * @returns {PromiseLike<[string]> | Promise<[string]>}
+ * @returns
  */
-async function listDirs(dir) {
-    let paths = await fs.readdir(dir);
+export async function listDirs(dir: string): Promise<(string | undefined)[]> {
+    const paths = await readdir(dir);
     return await Promise.all(
-        paths.map(async (file) => {
-            const filePath = path.join(dir, file);
-            const stats = await fs.stat(filePath);
+        paths.map(async (file: string) => {
+            const filePath = join(dir, file);
+            const stats = await stat(filePath);
             if (stats.isDirectory()) return filePath;
         })
     );
 }
 
-exports.listDirs = listDirs;
-
 /**
  * Deletes a directory recursively
  * @param dir
- * @returns {Promise<void>}
+ * @returns
  */
-async function deleteDir(dir) {
+export function deleteDir(dir: any) {
+    // TODO
     return rimraf(dir);
 }
-
-exports.deleteDir = deleteDir;
 
 /**
  * Generate arguments
  * @param {[string]} args
  * @returns {Object}
  */
-exports.generateArguments = function (args) {
+export function generateArguments(args: string[]) {
     const index = args.indexOf("--");
-    let parameters = [];
+    const parameters: { name: string; value: any }[] = [];
 
     if (index === -1) return { parameters: parameters };
 
-    let key = undefined;
+    let key;
     args.slice(index + 1).forEach((arg) => {
         if (!key) {
             key = arg.replace("--", "");
@@ -80,4 +75,4 @@ exports.generateArguments = function (args) {
     return {
         parameters: parameters,
     };
-};
+}
