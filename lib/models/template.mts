@@ -1,8 +1,8 @@
-import { Input } from "./input";
+import { Input } from "./input.mjs";
 import { readFile } from "node:fs/promises";
 import { load } from "js-yaml";
 import { blue, bright } from "ansicolor";
-import { GenericK8sSpecType } from "../k8s";
+import { GenericK8sSpecType } from "../k8s.mjs";
 
 type TemplateObjectType = {
     name: string;

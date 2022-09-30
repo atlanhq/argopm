@@ -1,5 +1,5 @@
 import { yellow, blue, lightCyan } from "ansicolor";
-import { constants } from "../constants";
+import { constants } from "../constants.mjs";
 
 /**
  * Encode a string

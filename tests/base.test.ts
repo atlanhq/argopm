@@ -1,4 +1,4 @@
-import { install } from "../lib/install";
+import { install } from "../lib/install.mjs";
 import { MOCK_PACKAGE_PATH, REGISTRY } from "./test-utils";
 
 describe("simulate package install", () => {

@@ -3,9 +3,9 @@ import { load } from "js-yaml";
 import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { IncomingMessage } from "node:http";
-import { constants } from "./constants";
-import { PackageInfo, PackageObjectType } from "./models/info";
-import { Resource } from "./models/resource";
+import { constants } from "./constants.mjs";
+import { PackageInfo, PackageObjectType } from "./models/info.mjs";
+import { Resource } from "./models/resource.mjs";
 
 const kc = new KubeConfig();
 kc.loadFromDefault();

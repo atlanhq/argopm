@@ -2,7 +2,7 @@ import axios from "axios";
 import * as dotenv from "dotenv";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
-import { PackageObjectType } from "./models/info";
+import { PackageObjectType } from "./models/info.mjs";
 
 dotenv.config();
 

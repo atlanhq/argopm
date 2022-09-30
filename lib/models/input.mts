@@ -1,4 +1,4 @@
-import { Parameter } from "./parameter";
+import { Parameter } from "./parameter.mjs";
 import { yellow } from "ansicolor";
 
 export type InputObjectType = {

@@ -1,16 +1,16 @@
-#!/usr/bin/env -S npx ts-node
-import { install, installGlobal } from "../lib/install";
-import { initHelp, installHelp } from "../lib/help";
-import { uninstall, run } from "../lib/index";
-import { init } from "../lib/init";
+#!/usr/bin/env -S npx ts-node --esm
+import { bright, cyan, dim } from "ansicolor";
+import asTable from "as-table";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { cyan, dim, bright } from "ansicolor";
-import { Package } from "../lib/models/package";
-import { configure } from "as-table";
-import { K8sInstallerOptionsType } from "../lib/k8s";
+import { initHelp, installHelp } from "../lib/help.mjs";
+import { run, uninstall } from "../lib/index.mjs";
+import { init } from "../lib/init.mjs";
+import { install, installGlobal } from "../lib/install.mjs";
+import { K8sInstallerOptionsType } from "../lib/k8s.mjs";
+import { Package } from "../lib/models/package.mjs";
 
-configure({
+asTable.configure({
     title: (x) => bright(x),
     delimiter: dim(cyan(" | ")),
     dash: bright(cyan("-")),
@@ -55,7 +55,7 @@ yargs(hideBin(process.argv))
                     default: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 }),
         handler: async (argv) => {
-            let packageName;
+            let packageName: string;
             const options: K8sInstallerOptionsType = {
                 force: argv.force,
                 cronString: argv.cronString,
@@ -80,12 +80,7 @@ yargs(hideBin(process.argv))
                 );
             }
 
-            const re = new RegExp("NAME", "g");
-            if (packageName) {
-                console.log(installHelp.replace(re, packageName));
-            } else {
-                console.error(`No packageName on ${installHelp}.`);
-            }
+            console.log(installHelp.replace(/NAME/g, packageName));
         },
     })
     .command({
@@ -152,7 +147,7 @@ yargs(hideBin(process.argv))
                 default: true,
             }),
         handler: async (argv) => {
-            const packageName = await init(argv.force, argv.package_name as string);
+            const packageName = await init(argv.force);
             const re = new RegExp("NAME", "g");
             console.log(initHelp.replace(re, packageName));
         },

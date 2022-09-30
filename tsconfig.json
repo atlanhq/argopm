@@ -1,16 +1,14 @@
 {
   "compilerOptions": {
-    "outDir": "./dist",
-    "module": "commonjs",
+    "rootDirs": ["./bin/", "./lib/"],
+    "outDir": "./dist/",
+    "module": "ES2022",
     "target": "esnext",
     "allowJs": true,
     "esModuleInterop": true,
-    "moduleResolution": "Node"
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true
   },
-  "ts-node": {
-    "compilerOptions": {
-      "module": "CommonJS"
-    }
-  },
-  "include": ["./lib/**/*", "./bin/**/*"]
+  "include": ["./lib/**/*", "./bin/**/*"],
+  "exclude": ["./lib/static/*"]
 }

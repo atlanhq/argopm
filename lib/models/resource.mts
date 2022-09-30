@@ -1,6 +1,6 @@
-import { constants } from "../constants";
+import { constants } from "../constants.mjs";
 import { compare } from "compare-versions";
-import { GenericK8sSpecType } from "../k8s";
+import { GenericK8sSpecType } from "../k8s.mjs";
 
 export class Resource {
     resource: GenericK8sSpecType;

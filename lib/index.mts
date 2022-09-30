@@ -1,5 +1,5 @@
-import { Package } from "./models/package";
-import { generateArguments } from "./utils";
+import { Package } from "./models/package.mjs";
+import { generateArguments } from "./utils.mjs";
 
 /**
  * Delete a package

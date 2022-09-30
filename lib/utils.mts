@@ -2,8 +2,8 @@ import { join } from "path";
 import { readdir, stat, access } from "node:fs/promises";
 import { promisify } from "node:util";
 
-import rimraf = require("rimraf");
-import { Parameter } from "./models/parameter";
+import rimraf from "rimraf";
+import { Parameter } from "./models/parameter.mjs";
 const rimrafPromise = promisify(rimraf);
 
 /**

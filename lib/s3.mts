@@ -3,7 +3,7 @@ import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
 import { load } from "js-yaml";
 import { readFileSync } from "node:fs";
 import { Result } from "npm-package-arg";
-import { walk } from "./utils";
+import { walk } from "./utils.mjs";
 
 export class S3 {
     configMapName: string;

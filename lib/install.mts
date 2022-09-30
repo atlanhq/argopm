@@ -1,12 +1,13 @@
-import { K8sInstaller, K8sInstallerOptionsType } from "./k8s";
-import { S3 } from "./s3";
-import { listDirs, deleteDir } from "./utils";
+import { K8sInstaller, K8sInstallerOptionsType } from "./k8s.mjs";
+import { S3 } from "./s3.mjs";
+import { listDirs, deleteDir } from "./utils.mjs";
 import { readFileSync, existsSync } from "fs";
-import { DashboardInstaller } from "./dashboard";
-import { constants } from "./constants";
+import { DashboardInstaller } from "./dashboard.mjs";
+import { constants } from "./constants.mjs";
+import shell from "shelljs";
 
-import system = require("system-commands");
-import npa = require("npm-package-arg");
+// import system from "system-commands";
+import npa from "npm-package-arg";
 
 /**
  * Downloads the given package
@@ -16,11 +17,11 @@ import npa = require("npm-package-arg");
  * @param {string} registry Argo Package registry
  * @param {string} saveParam Save parameter
  */
-const npmInstall = async function (prefixPath: string, packageName: string, registry: string, saveParam: string) {
+const npmInstall = function (prefixPath: string, packageName: string, registry: string, saveParam: string) {
     if (packageName === ".") {
-        return await system(`NPM_CONFIG_REGISTRY=${registry} npm i ${saveParam} --prefix ${prefixPath} --force`);
+        return shell.exec(`NPM_CONFIG_REGISTRY=${registry} npm i ${saveParam} --prefix ${prefixPath} --force`);
     }
-    return await system(
+    return shell.exec(
         `NPM_CONFIG_REGISTRY=${registry} npm i ${packageName} ${saveParam} --prefix ${prefixPath} --force`
     );
 };
@@ -112,7 +113,7 @@ export const install = async function (
     save: boolean,
     cluster: boolean,
     options: K8sInstallerOptionsType,
-    dirPath: string = process.cwd()
+    dirPath: string = shell.pwd()
 ) {
     // dirPath = "/Users/amit/Documents/marketplace-packages/atlan-atlas";
     let npmSaveParam = "--no-save";
@@ -132,9 +133,6 @@ export const install = async function (
     const nodeModulesPath = `${dirPath}/node_modules`;
 
     let dirs: (string | undefined)[] = [];
-    if (!existsSync(nodeModulesPath)) {
-        return;
-    }
 
     if (packageName !== ".") {
         const cleanedPackageParts = packageName.split("@");
@@ -150,6 +148,7 @@ export const install = async function (
     }
 
     console.log(`Installing parent package ${parentPackageName}`);
+
     dirs = (await listDirs(nodeModulesPath)).filter((dir) => dir !== undefined);
     dirs.forEach(async (dir) => {
         if (dir && dir?.split("/").slice(-1)[0].startsWith("@")) {

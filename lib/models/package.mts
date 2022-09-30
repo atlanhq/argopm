@@ -2,12 +2,12 @@ import { CoreV1Api, CustomObjectsApi, KubeConfig, V1ConfigMap, V1Secret } from "
 import { blue, bright, lightCyan, yellow } from "ansicolor";
 import { load } from "js-yaml";
 import { readFile } from "node:fs/promises";
-import { constants } from "../constants";
-import { K8sApiResponse as K8sApiListResponse } from "../k8s";
-import { Argument } from "./argument";
-import { PackageInfo } from "./info";
-import { Parameter } from "./parameter";
-import { Template } from "./template";
+import { constants } from "../constants.mjs";
+import { K8sApiResponse as K8sApiListResponse } from "../k8s.mjs";
+import { Argument } from "./argument.mjs";
+import { PackageInfo } from "./info.mjs";
+import { Parameter } from "./parameter.mjs";
+import { Template } from "./template.mjs";
 
 const kc = new KubeConfig();
 kc.loadFromDefault();
