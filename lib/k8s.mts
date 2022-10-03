@@ -38,7 +38,11 @@ export type K8sInstallerOptionsType = {
  */
 function getResourceByName(resources: GenericK8sSpecType[], name: string) {
     //TODO: Possible bottleneck if packages grow.
-    return new Resource(resources.find(({ metadata }) => metadata.name === name));
+    const resource = resources.find(({ metadata }) => metadata.name === name);
+    if (resource) {
+        return new Resource(resource);
+    }
+    return null;
 }
 
 /**
@@ -125,26 +129,26 @@ export class K8sInstaller {
     /**
      * Installs the config maps
      */
-    installConfigs() {
+    async installConfigs() {
         const dirPath = `${this.packagePath}/configmaps/`;
-        return this.installYamlInPath(dirPath, false, constants.CONFIGMAP_KIND, "", K8sInstaller.upsertConfigMap);
+        return await this.installYamlInPath(dirPath, false, constants.CONFIGMAP_KIND, "", K8sInstaller.upsertConfigMap);
     }
 
     /**
      * Installs secrets
      */
-    installSecrets() {
+    async installSecrets() {
         const dirPath = `${this.packagePath}/secrets/`;
-        return this.installYamlInPath(dirPath, false, constants.SECERT_KIND, "", K8sInstaller.upsertSecret);
+        return await this.installYamlInPath(dirPath, false, constants.SECERT_KIND, "", K8sInstaller.upsertSecret);
     }
 
     /**
      * Installs cron workflows
      * @param {boolean} cluster - determines whether the templateRef is from the cluster scope or a namespace
      */
-    installCronWorkflows(cluster: boolean) {
+    async installCronWorkflows(cluster: boolean) {
         const dirPath = `${this.packagePath}/cronworkflows/`;
-        return this.installYamlInPath(
+        return await this.installYamlInPath(
             dirPath,
             cluster,
             constants.ARGO_CRON_WORKFLOW_KIND,
@@ -156,9 +160,9 @@ export class K8sInstaller {
     /**
      * Installs data pipelines
      */
-    installPipelines() {
+    async installPipelines() {
         const dirPath = `${this.packagePath}/pipelines/`;
-        return this.installYamlInPath(
+        return await this.installYamlInPath(
             dirPath,
             false,
             constants.ARGO_DATAFLOW_KIND,
@@ -171,13 +175,11 @@ export class K8sInstaller {
      * Installs the templates
      * @param {boolean} cluster Determines if ClusterWorkflowTemplates or WorkflowTemplates are installed
      */
-    installTemplates(cluster: boolean) {
+    async installTemplates(cluster: boolean) {
         const dirPath = `${this.packagePath}/templates/`;
-        let kind = constants.ARGO_WORKFLOW_TEMPLATES_KIND;
-        if (cluster) {
-            kind = constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND;
-        }
-        return this.installYamlInPath(
+        const kind = cluster ? constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND : constants.ARGO_WORKFLOW_TEMPLATES_KIND;
+
+        return await this.installYamlInPath(
             dirPath,
             cluster,
             kind,
@@ -192,33 +194,43 @@ export class K8sInstaller {
      * @param {boolean} cluster
      * @param {string} kind
      * @param {string} group
-     * @param
+     * @param {any} fn
      */
-    async installYamlInPath(dirPath: string, cluster: boolean, kind: string, group: string, fn) {
-        if (!existsSync(dirPath)) {
-            return Promise.resolve(false);
-        }
+    async installYamlInPath(
+        dirPath: string,
+        cluster: boolean,
+        kind: string,
+        group: string,
+        fn: (
+            packageName: string,
+            namespace: string,
+            kind: string,
+            group: string,
+            yamlObject: GenericK8sSpecType,
+            cluster: boolean,
+            forceUpdate: boolean
+        ) => void
+    ) {
+        if (existsSync(dirPath)) {
+            const files = (await readdir(dirPath)).filter(
+                (file: string) => file.endsWith(".yaml") || file.endsWith(".yml")
+            );
+            for (const file of files) {
+                const filePath = `${dirPath}${file}`;
+                const data = await readFile(filePath, "utf8");
+                const yamlData = load(data) as GenericK8sSpecType;
+                if (yamlData) {
+                    const fileName = file.substring(0, file.lastIndexOf("."));
+                    const folder = dirPath
+                        .split("/")
+                        .filter((el: string) => el.trim().length > 0)
+                        .pop();
 
-        const files = (await readdir(dirPath)).filter(
-            (file: string) => file.endsWith(".yaml") || file.endsWith(".yml")
-        );
-        files.forEach(async function (file) {
-            const filePath = `${dirPath}${file}`;
-            const data = await readFile(filePath, "utf8");
-            const yamlData = load(data) as GenericK8sSpecType;
-            if (!yamlData) {
-                return;
+                    const apmYAML = this.addAPMLabels(yamlData, folder, fileName);
+                    fn(this.package.name, this.namespace, kind, group, apmYAML, cluster, this.forceUpdate);
+                }
             }
-
-            const fileName = file.substring(0, file.lastIndexOf("."));
-            const folder = dirPath
-                .split("/")
-                .filter((el: string) => el.trim().length > 0)
-                .pop();
-
-            const apmYAML = this.addAPMLabels(yamlData, folder, fileName);
-            return fn(this.package.name, this.namespace, kind, group, apmYAML, cluster, this.forceUpdate);
-        });
+        }
     }
 
     /**
@@ -425,7 +437,6 @@ export class K8sInstaller {
                 PackageInfo.getPackageLabel(packageName)
             );
             yamlObject.kind = kind;
-            cluster = true;
 
             // Override the workflowTemplateRef clusterScope variable
             if (kind == constants.ARGO_CRON_WORKFLOW_KIND) {
@@ -483,9 +494,8 @@ export class K8sInstaller {
         const items = response.body.items;
         const resource = getResourceByName(items, name);
         const newVersion = yamlObject.metadata.labels[constants.ARGOPM_LIBRARY_VERSION_LABEL];
-        const isPresent = Boolean(resource);
 
-        if (isPresent) {
+        if (resource) {
             const { shouldUpdate, msgPrefix } = checkExistingResource(
                 resource,
                 name,
@@ -494,27 +504,25 @@ export class K8sInstaller {
                 forceUpdate
             );
 
-            if (!shouldUpdate) {
-                return;
+            if (shouldUpdate) {
+                if (resource.updateStrategyIsRecreate()) {
+                    console.debug(`${msgPrefix} v${resource.version} will be deleted and replaced with v${newVersion}`);
+                    return await K8sInstaller.recreateCustomResource(
+                        name,
+                        namespace,
+                        plural,
+                        yamlObject,
+                        cluster,
+                        apiGroup
+                    );
+                }
+                console.debug(`${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`);
+                return await K8sInstaller.patchCustomResource(name, namespace, plural, yamlObject, cluster, apiGroup);
             }
-
-            if (resource.updateStrategyIsRecreate()) {
-                console.debug(`${msgPrefix} v${resource.version} will be deleted and replaced with v${newVersion}`);
-                return await K8sInstaller.recreateCustomResource(
-                    name,
-                    namespace,
-                    plural,
-                    yamlObject,
-                    cluster,
-                    apiGroup
-                );
-            }
-            console.debug(`${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`);
-            return await K8sInstaller.patchCustomResource(name, namespace, plural, yamlObject, cluster, apiGroup);
+        } else {
+            console.debug(`${name} ${yamlObject.kind} not present in the cluster. Installing v${newVersion}`);
+            return await K8sInstaller.createCustomResource(namespace, plural, yamlObject, cluster, apiGroup);
         }
-
-        console.debug(`${name} ${yamlObject.kind} not present in the cluster. Installing v${newVersion}`);
-        return await K8sInstaller.createCustomResource(namespace, plural, yamlObject, cluster, apiGroup);
     }
 
     /**

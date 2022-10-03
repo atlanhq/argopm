@@ -1,7 +1,7 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
+import { readFileSync } from "fs";
 import { load } from "js-yaml";
-import { readFileSync } from "node:fs";
 import { Result } from "npm-package-arg";
 import { walk } from "./utils.mjs";
 
@@ -25,7 +25,9 @@ export class S3 {
         this.argoNamespace = argoNamespace;
         this.package = packageConfig;
     }
-
+    /**
+     * Initialize S3 client with configs from the S3 Config from Argo.
+     */
     async initialize() {
         const { bucket, region } = await this.getS3ConfigFromArgo(this.configMapName, this.argoNamespace);
         if (bucket && region) {
@@ -63,42 +65,37 @@ export class S3 {
 
     /**
      * Upload a given file to S3
-     * @param  {string} path
+     *
+     * @param {String} path Absolute path of file
      */
-    async uploadFile(path: string) {
+    async uploadFile(path) {
         const fileContent = readFileSync(path, {
             encoding: "utf-8",
             flag: "r",
         });
 
-        if (fileContent.length === 0) {
-            return Promise.resolve();
+        if (fileContent.length > 0) {
+            const pathSplit = path.split("static/");
+            const key = `${this.s3KeyPrefix}/${pathSplit[pathSplit.length - 1]}`;
+            console.log(`Uploading file: ${path} to ${key}`);
+            const params = {
+                Bucket: this.bucketName,
+                Key: key,
+                Body: fileContent,
+            };
+
+            return await this.client.send(new PutObjectCommand(params));
         }
-
-        const pathSplit = path.split("static/");
-        console.log(`${this.s3KeyPrefix}/${pathSplit[pathSplit.length - 1]}`);
-        const key = `${this.s3KeyPrefix}/${pathSplit[pathSplit.length - 1]}`;
-        console.log(`Uploading file: ${path} to ${key}`);
-        const params = {
-            Bucket: this.bucketName,
-            Key: key,
-            Body: fileContent,
-        };
-
-        return await this.client.send(new PutObjectCommand(params));
     }
 
     /**
      * Accepts a directory path and recursively uploads all the files in the `static` folder
      *
-     * @param {string} dirPath Absolute path of the directory
+     * @param {String} dirPath Absolute path of the directory
      */
-    async uploadStaticFiles(dirPath: string) {
-        const dirs = await walk(`${dirPath}/static`).filter((dir: string) => !dir.endsWith(".md"));
-        return await Promise.all(dirs.map((dir: any) => this.uploadFile(dir))).catch((err) => {
-            if (err.code !== "ENOENT") {
-                throw err;
-            }
-        });
+    async uploadStaticFiles(dirPath) {
+        let dirs = await walk(`${dirPath}/static`);
+        dirs = dirs.filter((dir) => !dir.endsWith(".md"));
+        await Promise.all(dirs.map((dir) => this.uploadFile(dir)));
     }
 }

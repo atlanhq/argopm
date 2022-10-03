@@ -2,8 +2,8 @@ import shell from "shelljs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = dirname(__filename);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Init an Argo package inside the folder
@@ -18,8 +18,9 @@ export const init = async (force: boolean) => {
     // const dirPath = "/tmp/test-package";
     const dirPath = shell.pwd();
 
-    let pathComponents = dirPath.split("/");
+    const pathComponents = dirPath.split("/");
     const packageName = pathComponents[pathComponents.length - 1];
+    console.log(`Installing from the current directory (${dirPath}) with the package name "${packageName}"...`);
 
     if (!force && shell.ls("package.json").length > 0) {
         throw new Error(`Files already present in the ${__dirname}. Run this command again with --force to ignore`);

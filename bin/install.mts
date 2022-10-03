@@ -148,8 +148,7 @@ yargs(hideBin(process.argv))
             }),
         handler: async (argv) => {
             const packageName = await init(argv.force);
-            const re = new RegExp("NAME", "g");
-            console.log(initHelp.replace(re, packageName));
+            console.log(initHelp.replace(/NAME/g, packageName));
         },
     })
     .command({

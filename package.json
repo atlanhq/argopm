@@ -5,7 +5,7 @@
   "main": "./bin/index.ts",
   "type": "module",
   "scripts": {
-    "build": "esbuild ./bin/install.mts --bundle --platform=node --format=cjs --outfile=./dist/argopm.cjs --external:shelljs && sed -i.bak 's,/bin/env -S npx ts-node --esm,/bin/env node,g' ./dist/argopm.cjs && cp -r ./lib/static/ ./dist/static/",
+    "build": "esbuild ./bin/install.mts --bundle --platform=node --format=esm --outfile=./dist/argopm.mjs --external:shelljs --banner:js=\"import {createRequire} from 'module';const require=createRequire(import.meta.url);\" && sed -i.bak 's,/bin/env -S npx ts-node --esm,/bin/env node,g' ./dist/argopm.mjs",
     "test": "jest --detectOpenHandles",
     "prettier": "prettier --write .",
     "eslint": "eslint --fix .",
