@@ -1,5 +1,5 @@
 #!/usr/bin/env -S npx ts-node --esm
-import { bright, cyan, dim } from "ansicolor";
+import { bright, cyan, dim, green, yellow } from "ansicolor";
 import asTable from "as-table";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -9,6 +9,7 @@ import { init } from "../lib/init.mjs";
 import { install, installGlobal } from "../lib/install.mjs";
 import { K8sInstallerOptionsType } from "../lib/k8s.mjs";
 import { Package } from "../lib/models/package.mjs";
+import { constants } from "./constants.mjs";
 
 asTable.configure({
     title: (x) => bright(x),
@@ -16,7 +17,27 @@ asTable.configure({
     dash: bright(cyan("-")),
 });
 
-yargs(hideBin(process.argv))
+const yarg = yargs(hideBin(process.argv));
+
+yarg
+    .option("namespace", {
+        alias: "n",
+        type: "string",
+        description: "Kubernetes namespace. Packages will be installed in this namespace",
+        default: "argo",
+    })
+    .option("registry", {
+        alias: "r",
+        type: "string",
+        description: "Argo Package Registry",
+        default: "https://packages.atlan.com",
+    })
+    .option("cluster", {
+        alias: "c",
+        type: "boolean",
+        description: "Install the template at cluster level",
+        default: false,
+    })
     .command({
         command: "install <package>",
         aliases: ["i"],
@@ -26,7 +47,7 @@ yargs(hideBin(process.argv))
                 .option("save", {
                     alias: "s",
                     type: "boolean",
-                    description: "Save the package as a dependency in the current project.",
+                    description: "Save the package as a dependency in the current project",
                     default: true,
                 })
                 .option("force", {
@@ -53,30 +74,91 @@ yargs(hideBin(process.argv))
                     description: "Time Zone",
                     demandOption: false,
                     default: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                })
+                .option("exclude-dependencies", {
+                    alias: "x",
+                    type: "boolean",
+                    description: "Exclude dependencies from package.json",
+                    demandOption: false,
+                    default: false,
+                })
+                .option("workflow-templates", {
+                    alias: "wftmpl",
+                    type: "array",
+                    description: "Install all (leave empty) or specific workflowtemplates (for local package only)",
+                    demandOption: false,
+                })
+                .option("configmaps", {
+                    alias: "cm",
+                    type: "array",
+                    description: "Install all (leave empty) or specific configmaps (for local package only)",
+                    demandOption: false,
+                })
+                .option("secrets", {
+                    alias: "sec",
+                    type: "array",
+                    description: "Install all (leave empty) or specific secrets (for local package only)",
+                    demandOption: false,
+                })
+                .option("cronworkflows", {
+                    alias: "cwf",
+                    type: "array",
+                    description: "Install all (leave empty) or specific cronworkflows (for local package only)",
+                    demandOption: false,
+                })
+                .option("pipelines", {
+                    alias: "pl",
+                    type: "array",
+                    description: "Install all (leave empty) or specific pipelines (for local package only)",
+                    demandOption: false,
                 }),
         handler: async (argv) => {
             let packageName: string;
-            const options: K8sInstallerOptionsType = {
-                force: argv.force,
-                cronString: argv.cronString,
-                timeZone: argv.timeZone,
+            const {
+                global,
+                namespace,
+                registry,
+                cluster,
+                excludeDependencies,
+                save,
+                force,
+                cronString,
+                timeZone,
+                workflowTemplates,
+                configmaps,
+                secrets,
+                cronworkflows,
+                pipelines,
+            } = argv;
+            const options: K8sInstallerOptionsType = { force, cronString, timeZone };
+            const installParts: any = {
+                [constants.ARGO_WORKFLOW_TEMPLATES_KIND]: workflowTemplates.length > 0 ? workflowTemplates : undefined,
+                [constants.CONFIGMAP_KIND]: configmaps.length > 0 ? configmaps : undefined,
+                [constants.SECRET_KIND]: secrets.length > 0 ? secrets : undefined,
+                [constants.ARGO_CRON_WORKFLOW_KIND]: cronworkflows.length > 0 ? cronworkflows : undefined,
+                [constants.ARGO_DATAFLOW_KIND]: pipelines.length > 0 ? pipelines : undefined,
             };
-            if (argv.global) {
+
+            if (global) {
                 packageName = await installGlobal(
-                    argv.package as string,
-                    argv.registry as string,
-                    argv.namespace as string,
-                    argv.cluster as boolean,
-                    options as K8sInstallerOptionsType
+                    argv.package as string, // package is a JS reserved word
+                    registry,
+                    namespace,
+                    cluster,
+                    excludeDependencies,
+                    options,
+                    installParts
                 );
             } else {
                 packageName = await install(
                     argv.package as string,
-                    argv.registry as string,
-                    argv.namespace as string,
-                    argv.save,
-                    argv.cluster as boolean,
-                    options
+                    registry,
+                    namespace,
+                    save,
+                    cluster,
+                    excludeDependencies,
+                    options,
+                    installParts
                 );
             }
 
@@ -94,7 +176,7 @@ yargs(hideBin(process.argv))
             );
             const info = argv.template
                 ? argoPackage.templateInfo(argv.template as string)
-                : argoPackage.packageInfo(argv.namespace as string);
+                : await argoPackage.packageInfo(argv.namespace as string);
             console.log(info);
         },
     })
@@ -124,7 +206,7 @@ yargs(hideBin(process.argv))
                 argv.imagePullSecrets as string,
                 argv.cluster as boolean
             );
-            console.log(`Package run successful`);
+            console.log(green(`Package run successful.`));
         },
     })
     .command({
@@ -133,7 +215,7 @@ yargs(hideBin(process.argv))
         describe: "Uninstall a package. Uninstalls all dependencies associated with the package.",
         handler: async (argv) => {
             await uninstall(argv.namespace as string, argv.package as string, argv.cluster as boolean);
-            console.log(`Successfully deleted package ${argv.package}`);
+            console.log(green(`Successfully deleted package ${argv.package}`));
         },
     })
     .command({
@@ -158,29 +240,13 @@ yargs(hideBin(process.argv))
         handler: async (argv) => {
             const argoPackages = await Package.list(argv.namespace as string, argv.cluster as boolean);
             if (argoPackages.length === 0) {
-                console.log("No packages found");
-                return;
+                console.log(yellow("No packages found"));
             }
+            console.log(asTable(argoPackages.map((p) => p.info)));
         },
     })
-    .option("namespace", {
-        alias: "n",
-        type: "string",
-        description: "Kubernetes namespace. Packages will be installed in this namespace",
-        default: "argo",
-    })
-    .option("registry", {
-        alias: "r",
-        type: "string",
-        description: "Argo Package Registry",
-        default: "https://packages.atlan.com",
-    })
-    .option("cluster", {
-        alias: "c",
-        type: "boolean",
-        description: "Install the template at cluster level",
-        default: false,
-    })
     .demandCommand()
-    .wrap(144)
+    .wrap(yarg.terminalWidth())
     .help().argv;
+
+export default yarg;

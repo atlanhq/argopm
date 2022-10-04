@@ -9,6 +9,7 @@ import shell from "shelljs";
 // import system from "system-commands";
 import npa from "npm-package-arg";
 import process from "process";
+import { red, yellow } from "ansicolor";
 
 /**
  * Downloads the given package
@@ -42,13 +43,24 @@ export const installGlobal = async function (
     registry: string,
     namespace: string,
     cluster: boolean,
-    options: K8sInstallerOptionsType
+    excludeDependencies: boolean,
+    options: K8sInstallerOptionsType,
+    installParts: { [k: string]: string[] }
 ) {
     let dirPath = `/tmp/argopm/${packageName}`;
     dirPath = dirPath.split("@").slice(0, -1).join("@");
-    let mainPackageName: string | null | undefined = packageName;
-    mainPackageName = await install(packageName, registry, namespace, false, cluster, options, dirPath);
-    deleteDir(dirPath);
+    const mainPackageName = await install(
+        packageName,
+        registry,
+        namespace,
+        false,
+        cluster,
+        excludeDependencies,
+        options,
+        installParts,
+        dirPath
+    );
+    await deleteDir(dirPath);
     return mainPackageName;
 };
 
@@ -61,42 +73,6 @@ const packageNameFromPath = function (path: string): string {
     const packageJSONFilePath = `${path}/package.json`;
     const packageObject = JSON.parse(readFileSync(packageJSONFilePath, "utf-8"));
     return `${packageObject.name}@${packageObject.version}`;
-};
-
-/**
- * Execute k8sInstaller and dashboardInstaller.
- * @param  {string} dirPath
- * @param  {boolean} cluster
- * @param  {string} namespace
- * @param  {string} parentPackageName
- * @param  {string} registry
- * @param  {K8sInstallerOptionsType} options
- */
-const processInstallers = async (
-    dirPath: string,
-    cluster: boolean,
-    namespace: string,
-    parentPackageName: string,
-    registry: string,
-    options: K8sInstallerOptionsType
-) => {
-    // Upload Static Files
-    const s3Uploader = new S3(
-        constants.ATLAN_DEFAULTS_CONFIGMAP_NAME,
-        constants.ATLAN_DEFAULTS_CONFIGMAP_NAMESPACE,
-        npa(packageNameFromPath(dirPath))
-    );
-
-    // Install Template on Argo
-    const k8sInstaller = new K8sInstaller(dirPath, namespace, parentPackageName, registry, options);
-
-    // Install Dashboards
-    const dashboardInstaller = new DashboardInstaller(k8sInstaller.package, dirPath);
-
-    await k8sInstaller.install(cluster);
-    await dashboardInstaller.install();
-    await s3Uploader.initialize();
-    return await s3Uploader.uploadStaticFiles(dirPath);
 };
 
 /**
@@ -115,52 +91,80 @@ export const install = async function (
     namespace: string,
     save: boolean,
     cluster: boolean,
+    excludeDependencies: boolean,
     options: K8sInstallerOptionsType,
+    installParts: { [k: string]: string[] },
     dirPath: string = process.cwd()
 ) {
-    const packageJSONFilePath = `${dirPath}/package.json`;
-    if (packageName === "." && save && !existsSync(packageJSONFilePath)) {
-        throw new Error(`package.json is not present in the current dir ${dirPath}. Try with --no-save argument`);
-    }
-
     let parentPackageName = packageName;
-    const npmInstallResult = npmInstall(dirPath, packageName, registry, save);
-    console.log(npmInstallResult.stdout);
-
-    let dirs: string[] = [];
-
     const nodeModulesPath = `${dirPath}/node_modules`;
-    if (existsSync(nodeModulesPath)) {
-        if (packageName !== ".") {
-            const cleanedPackageParts = packageName.split("@");
-            let cleanedPackageName = cleanedPackageParts.slice(0, -1).join("@");
-            if (cleanedPackageName == "") {
-                cleanedPackageName = packageName;
-            }
-
-            parentPackageName = packageNameFromPath(`${nodeModulesPath}/${cleanedPackageName}`);
-        } else {
-            parentPackageName = packageNameFromPath(`${dirPath}`);
-            registry = "local";
-        }
-        console.log(`Installing parent package ${parentPackageName}`);
-
-        dirs = (await listDirs(nodeModulesPath)).filter((dir) => dir !== undefined);
-    }
-
-    dirs.forEach(async (dir) => {
-        if (dir && dir?.split("/").slice(-1)[0].startsWith("@")) {
-            const innerDirs = await listDirs(dir);
-            innerDirs.forEach(async (innerDir) => {
-                await processInstallers(innerDir, cluster, namespace, parentPackageName, registry, options);
-            });
-        } else {
-            await processInstallers(dir, cluster, namespace, parentPackageName, registry, options);
-        }
-    });
 
     if (packageName === ".") {
-        await processInstallers(dirPath, cluster, namespace, parentPackageName, registry, options);
+        parentPackageName = packageNameFromPath(`${dirPath}`);
+        registry = "local";
+    } else {
+        const cleanedPackageParts = packageName.split("@");
+        let cleanedPackageName = cleanedPackageParts.slice(0, -1).join("@");
+        if (cleanedPackageName == "") {
+            cleanedPackageName = packageName;
+        }
+        parentPackageName = packageNameFromPath(`${nodeModulesPath}/${cleanedPackageName}`);
+    }
+
+    const processInstallers = async (dirPath: string) => {
+        // Upload Static Files
+        const s3Uploader = new S3(
+            constants.ATLAN_DEFAULTS_CONFIGMAP_NAME,
+            constants.ATLAN_DEFAULTS_CONFIGMAP_NAMESPACE,
+            npa(packageNameFromPath(dirPath))
+        );
+
+        // Install Template on Argo
+        const k8sInstaller = new K8sInstaller(dirPath, namespace, parentPackageName, registry, options);
+
+        // Install Dashboards
+        const dashboardInstaller = new DashboardInstaller(k8sInstaller.package, dirPath);
+
+        await k8sInstaller.install(cluster, installParts);
+        await dashboardInstaller.install();
+        await s3Uploader.initialize();
+        return await s3Uploader.uploadStaticFiles(dirPath);
+    };
+
+    if (!excludeDependencies) {
+        const packageJSONFilePath = `${dirPath}/package.json`;
+        if (packageName === "." && save && !existsSync(packageJSONFilePath)) {
+            console.error(
+                red(`package.json is not present in the current dir ${dirPath}. Try with --no-save argument`)
+            );
+            process.exit(1);
+        }
+
+        npmInstall(dirPath, packageName, registry, save);
+
+        let dirs: string[] = [];
+
+        if (existsSync(nodeModulesPath)) {
+            console.log(yellow(`Installing parent package ${parentPackageName}`));
+            dirs = await listDirs(nodeModulesPath);
+            dirs = dirs.filter((dir) => dir !== undefined);
+        }
+
+        dirs.forEach(async (dir) => {
+            if (dir && dir?.split("/").slice(-1)[0].startsWith("@")) {
+                const innerDirs = await listDirs(dir);
+                innerDirs.forEach(async (innerDir) => {
+                    await processInstallers(innerDir);
+                });
+            } else {
+                await processInstallers(dir);
+            }
+        });
+    }
+
+    if (packageName === ".") {
+        parentPackageName = packageNameFromPath(`${dirPath}`);
+        await processInstallers(dirPath);
     }
 
     const parsedPackage = npa(parentPackageName);

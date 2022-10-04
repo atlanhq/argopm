@@ -18,7 +18,7 @@ export const constants = {
     ARGO_CRON_WORKFLOW_KIND: "CronWorkflow",
     ARGO_DATAFLOW_KIND: "Pipeline",
     CONFIGMAP_KIND: "ConfigMap",
-    SECERT_KIND: "Secret",
+    SECRET_KIND: "Secret",
 
     // workflow
     ARGO_K8S_API_GROUP: "argoproj.io",

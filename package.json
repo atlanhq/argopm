@@ -1,6 +1,6 @@
 {
   "name": "argopm",
-  "version": "1.0.0",
+  "version": "1.0.0-rc.1",
   "description": "Argo package manager",
   "main": "./bin/index.ts",
   "type": "module",
@@ -25,13 +25,12 @@
     "npm-package-arg": "^9.1.0",
     "rimraf": "^3.0.2",
     "shelljs": "^0.8.5",
-    "system-commands": "^1.1.7",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
     "@types/jest": "^29.0.3",
     "@types/js-yaml": "^4.0.5",
-    "@types/node": "^18.7.23",
+    "@types/node": "^18.8.1",
     "@types/npm-package-arg": "^6.1.1",
     "@types/rimraf": "^3.0.2",
     "@types/shelljs": "^0.8.11",
@@ -63,11 +62,33 @@
   ],
   "jest": {
     "verbose": true,
-    "preset": "ts-jest",
-    "testEnvironment": "node"
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".mts"
+    ],
+    "resolver": "<rootDir>/mjs-resolver.ts",
+    "preset": "ts-jest/presets/default-esm",
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.m[jt]s$": [
+        "ts-jest",
+        {
+          "useEsm": true
+        }
+      ]
+    },
+    "testMatch": [
+      "**/?(*.)+(spec|test).m[jt]s"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "ts",
+      "mts",
+      "mjs"
+    ]
   },
   "bin": {
-    "argopm": "./dist/install.cjs"
+    "argopm": "./dist/install.mjs"
   },
   "preferGlobal": true,
   "peerDependencies": {

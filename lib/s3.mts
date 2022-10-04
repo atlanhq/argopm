@@ -1,6 +1,7 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, PutObjectCommandInput, S3Client } from "@aws-sdk/client-s3";
 import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
-import { readFileSync } from "fs";
+import { yellow } from "ansicolor";
+import { existsSync, readFileSync } from "fs";
 import { load } from "js-yaml";
 import { Result } from "npm-package-arg";
 import { walk } from "./utils.mjs";
@@ -52,8 +53,8 @@ export class S3 {
         const coreK8sApi = kc.makeApiClient(CoreV1Api);
         const argoWorkflowControllerConfigMap = await coreK8sApi.readNamespacedConfigMap(configMapName, argoNamespace);
         if (argoWorkflowControllerConfigMap.body.data) {
-            const bucket: string = load(argoWorkflowControllerConfigMap.body.data["bucket"]) as string;
-            const region: string = load(argoWorkflowControllerConfigMap.body.data["region"]) as string;
+            const bucket: string = argoWorkflowControllerConfigMap.body.data["bucket"];
+            const region: string = argoWorkflowControllerConfigMap.body.data["region"];
             return {
                 bucket,
                 region,
@@ -77,14 +78,16 @@ export class S3 {
         if (fileContent.length > 0) {
             const pathSplit = path.split("static/");
             const key = `${this.s3KeyPrefix}/${pathSplit[pathSplit.length - 1]}`;
-            console.log(`Uploading file: ${path} to ${key}`);
-            const params = {
-                Bucket: this.bucketName,
-                Key: key,
-                Body: fileContent,
-            };
 
-            return await this.client.send(new PutObjectCommand(params));
+            console.log(`Uploading file: ${path} to ${key}`);
+
+            return await this.client.send(
+                new PutObjectCommand({
+                    Bucket: this.bucketName,
+                    Key: key,
+                    Body: fileContent,
+                })
+            );
         }
     }
 
@@ -94,8 +97,12 @@ export class S3 {
      * @param {String} dirPath Absolute path of the directory
      */
     async uploadStaticFiles(dirPath) {
-        let dirs = await walk(`${dirPath}/static`);
-        dirs = dirs.filter((dir) => !dir.endsWith(".md"));
-        await Promise.all(dirs.map((dir) => this.uploadFile(dir)));
+        if (existsSync(`${dirPath}/static`)) {
+            let dirs = await walk(`${dirPath}/static`);
+            dirs = dirs.filter((dir) => !dir.endsWith(".md"));
+            await Promise.all(dirs.map((dir) => this.uploadFile(dir)));
+        } else {
+            console.log(yellow(`No "static" dir under ${dirPath}.`));
+        }
     }
 }

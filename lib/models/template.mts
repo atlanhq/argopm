@@ -1,8 +1,9 @@
-import { Input } from "./input.mjs";
-import { readFile } from "node:fs/promises";
-import { load } from "js-yaml";
 import { blue, bright } from "ansicolor";
+import { load } from "js-yaml";
+import { readFile } from "node:fs/promises";
 import { GenericK8sSpecType } from "../k8s.mjs";
+import { getDirName } from "../utils.mjs";
+import { Input } from "./input.mjs";
 
 type TemplateObjectType = {
     name: string;
@@ -45,10 +46,11 @@ export class Template {
         imagePullSecrets: string,
         cluster: boolean
     ) {
+        const dirName = getDirName(import.meta.url);
         const runtimeInputs = new Input(args);
 
         this.inputs.checkRequiredArgs(runtimeInputs);
-        const data = await readFile(`${__dirname}/../static/workflows/template-workflow.yaml`);
+        const data = await readFile(`${dirName}/../static/workflows/template-workflow.yaml`);
         const workflow: GenericK8sSpecType = load(data.toString());
 
         workflow.metadata.generateName = `${this.name}-`;

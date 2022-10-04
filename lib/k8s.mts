@@ -117,19 +117,19 @@ export class K8sInstaller {
      * Installs the given package to Argo K8s deployment
      * @param {boolean} cluster
      */
-    async install(cluster: boolean) {
+    async install(cluster: boolean, installParts: { [k: string]: string[] }) {
         console.log(`Installing package ${this.package.name}@${this.package.version}`);
-        await this.installConfigs();
-        await this.installSecrets();
-        await this.installPipelines();
-        await this.installTemplates(cluster);
-        await this.installCronWorkflows(cluster);
+        await this.installConfigmaps(installParts[constants.CONFIGMAP_KIND]);
+        await this.installSecrets(installParts[constants.SECRET_KIND]);
+        await this.installPipelines(installParts[constants.ARGO_DATAFLOW_KIND]);
+        await this.installTemplates(cluster, installParts[constants.ARGO_WORKFLOW_TEMPLATES_KIND]);
+        await this.installCronWorkflows(cluster, installParts[constants.ARGO_CRON_WORKFLOW_KIND]);
     }
 
     /**
      * Installs the config maps
      */
-    async installConfigs() {
+    async installConfigmaps(names?: string[]) {
         const dirPath = `${this.packagePath}/configmaps/`;
         return await this.installYamlInPath(dirPath, false, constants.CONFIGMAP_KIND, "", K8sInstaller.upsertConfigMap);
     }
@@ -137,16 +137,16 @@ export class K8sInstaller {
     /**
      * Installs secrets
      */
-    async installSecrets() {
+    async installSecrets(names?: string[]) {
         const dirPath = `${this.packagePath}/secrets/`;
-        return await this.installYamlInPath(dirPath, false, constants.SECERT_KIND, "", K8sInstaller.upsertSecret);
+        return await this.installYamlInPath(dirPath, false, constants.SECRET_KIND, "", K8sInstaller.upsertSecret);
     }
 
     /**
      * Installs cron workflows
      * @param {boolean} cluster - determines whether the templateRef is from the cluster scope or a namespace
      */
-    async installCronWorkflows(cluster: boolean) {
+    async installCronWorkflows(cluster: boolean, names?: string[]) {
         const dirPath = `${this.packagePath}/cronworkflows/`;
         return await this.installYamlInPath(
             dirPath,
@@ -160,7 +160,7 @@ export class K8sInstaller {
     /**
      * Installs data pipelines
      */
-    async installPipelines() {
+    async installPipelines(names?: string[]) {
         const dirPath = `${this.packagePath}/pipelines/`;
         return await this.installYamlInPath(
             dirPath,
@@ -175,7 +175,7 @@ export class K8sInstaller {
      * Installs the templates
      * @param {boolean} cluster Determines if ClusterWorkflowTemplates or WorkflowTemplates are installed
      */
-    async installTemplates(cluster: boolean) {
+    async installTemplates(cluster: boolean, names?: string[]) {
         const dirPath = `${this.packagePath}/templates/`;
         const kind = cluster ? constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND : constants.ARGO_WORKFLOW_TEMPLATES_KIND;
 
@@ -201,6 +201,7 @@ export class K8sInstaller {
         cluster: boolean,
         kind: string,
         group: string,
+        names: string[],
         fn: (
             packageName: string,
             namespace: string,
@@ -219,6 +220,7 @@ export class K8sInstaller {
                 const filePath = `${dirPath}${file}`;
                 const data = await readFile(filePath, "utf8");
                 const yamlData = load(data) as GenericK8sSpecType;
+
                 if (yamlData) {
                     const fileName = file.substring(0, file.lastIndexOf("."));
                     const folder = dirPath

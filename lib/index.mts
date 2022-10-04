@@ -29,9 +29,10 @@ export async function run(
     imagePullSecrets: string,
     cluster: boolean
 ) {
-    const runArguments = generateArguments(process.argv);
+    const runArguments = generateArguments();
+
     const argoPackage = await Package.info(namespace, name, cluster);
-    if (templateName)
+    if (templateName) {
         return argoPackage.runTemplate(
             templateName,
             runArguments,
@@ -40,5 +41,7 @@ export async function run(
             cluster,
             namespace
         );
-    return argoPackage.run(runArguments, serviceAccountName, imagePullSecrets, cluster, namespace);
+    } else {
+        return argoPackage.run(runArguments, serviceAccountName, imagePullSecrets, cluster, namespace);
+    }
 }

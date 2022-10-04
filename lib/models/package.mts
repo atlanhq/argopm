@@ -1,10 +1,11 @@
 import { CoreV1Api, CustomObjectsApi, KubeConfig, V1ConfigMap, V1Secret } from "@kubernetes/client-node";
-import { blue, bright, lightCyan, yellow } from "ansicolor";
+import { blue, bright, lightCyan, red, yellow } from "ansicolor";
 import { load } from "js-yaml";
 import { readFile } from "node:fs/promises";
 import { constants } from "../constants.mjs";
 import { K8sApiResponse as K8sApiListResponse } from "../k8s.mjs";
-import { Argument } from "./argument.mjs";
+import { getDirName } from "../utils.mjs";
+import { Arguments } from "./argument.mjs";
 import { PackageInfo } from "./info.mjs";
 import { Parameter } from "./parameter.mjs";
 import { Template } from "./template.mjs";
@@ -20,7 +21,7 @@ export class Package {
     spec: any;
     info: PackageInfo;
     isExecutable: boolean;
-    arguments: Argument;
+    arguments: Arguments;
     templates: Template[];
 
     /**
@@ -32,7 +33,7 @@ export class Package {
         this.spec = k8sYaml.spec;
         this.info = new PackageInfo(this.metadata.labels);
         this.isExecutable = !!this.spec.entrypoint;
-        this.arguments = new Argument(this.spec.arguments);
+        this.arguments = new Arguments(this.spec.arguments);
         this.templates = Template.generate(this.spec.templates);
     }
 
@@ -377,15 +378,23 @@ export class Package {
             throw "Package is not runnable";
         }
 
-        const runtimeArguments = new Argument(args);
+        const dirName = getDirName(import.meta.url);
+
+        const runtimeArguments = new Arguments(args);
         this.arguments.checkRequiredArgs(runtimeArguments);
-        const yamlStr = await readFile(`${__dirname}/../static/workflows/workflow.yaml`);
+        const yamlStr = await readFile(`${dirName}/../static/workflows/workflow.yaml`);
         const workflow: any = load(yamlStr.toString());
 
         const name = this.metadata.name;
         workflow.metadata.generateName = `${name}-`;
-        if (serviceAccountName) workflow.spec.serviceAccountName = serviceAccountName;
-        if (imagePullSecrets) workflow.spec.imagePullSecrets = [{ name: imagePullSecrets }];
+        if (serviceAccountName) {
+            workflow.spec.serviceAccountName = serviceAccountName;
+        }
+
+        if (imagePullSecrets) {
+            workflow.spec.imagePullSecrets = [{ name: imagePullSecrets }];
+        }
+
         workflow.spec.workflowTemplateRef.name = name;
         workflow.spec.workflowTemplateRef.clusterScope = cluster;
         workflow.spec.arguments = runtimeArguments;
@@ -418,7 +427,7 @@ export class Package {
         namespace: string
     ) {
         const template = this.templateForName(templateName);
-        const workflow = template.generateWorkflow(
+        const workflow = await template.generateWorkflow(
             this.metadata.name,
             args,
             serviceAccountName,
@@ -438,7 +447,7 @@ export class Package {
      * Get Installer label
      * @returns {string}
      */
-    static getInstallerLabel() {
+    static getInstallerLabel(): string {
         return `${constants.ARGOPM_INSTALLER_LABEL}=${constants.ARGOPM_INSTALLER_LABEL_VALUE}`;
     }
 
@@ -480,7 +489,8 @@ export class Package {
         }
         const items = response.body.items;
         if (items.length !== 1) {
-            throw new Error(`${packageName} not found`);
+            console.error(red(`Package "${packageName}" is not found.`));
+            process.exit(1);
         }
         return new Package(items[0]);
     }
@@ -489,9 +499,9 @@ export class Package {
      * Get all installed packages in the namespace
      * @param {string} namespace
      * @param {boolean} cluster
-     * @returns
+     * @returns {Package[]} packages
      */
-    static async list(namespace: string, cluster: boolean) {
+    static async list(namespace: string, cluster: boolean): Promise<Package[]> {
         let response: K8sApiListResponse;
         let plural = `${constants.ARGO_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
 

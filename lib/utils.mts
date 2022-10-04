@@ -1,10 +1,24 @@
-import { join } from "path";
+import { dirname, join } from "path";
 import { readdir, stat, access } from "node:fs/promises";
 import { promisify } from "node:util";
 
 import rimraf from "rimraf";
 import { Parameter } from "./models/parameter.mjs";
+import { hideBin, Parser } from "yargs/helpers";
+import { fileURLToPath } from "url";
+
 const rimrafPromise = promisify(rimraf);
+
+/**
+ * Returns ESM-specific dir name
+ * @param {string} url
+ * @returns {string} __dirname
+ */
+export const getDirName = (url: string): string => {
+    const __filename = fileURLToPath(url);
+    const __dirname = dirname(__filename);
+    return __dirname;
+};
 
 /**
  * Recursively walk through the folder and return all file paths
@@ -54,31 +68,19 @@ export async function deleteDir(dir: string) {
 
 /**
  * Generate arguments
- * @param {[string]} args
- * @returns {Object}
+ * @returns
  */
-export function generateArguments(args: string[]) {
-    const index = args.indexOf("--");
-    const parameters: Parameter[] = [];
+export function generateArguments() {
+    const argStartIndex = process.argv.indexOf("--");
+    let parameters: Parameter[] = [];
 
-    if (index === -1) return { parameters: parameters };
+    if (argStartIndex > -1) {
+        const runArgv = hideBin(process.argv.slice(argStartIndex - 1));
+        const parsedArgs = Parser.detailed(runArgv);
+        parameters = Object.entries(parsedArgs.argv)
+            .filter(([key, _]) => key !== "_")
+            .map(([key, value]) => new Parameter({ name: key, value }));
+    }
 
-    let key: string;
-    args.slice(index + 1).forEach((arg) => {
-        if (!key) {
-            key = arg.replace("--", "");
-        } else {
-            parameters.push(
-                new Parameter({
-                    name: key,
-                    value: arg,
-                })
-            );
-            key = undefined;
-        }
-    });
-
-    return {
-        parameters: parameters,
-    };
+    return { parameters };
 }

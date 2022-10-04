@@ -1,5 +1,5 @@
 import { Parameter } from "./parameter.mjs";
-import { yellow } from "ansicolor";
+import { red, yellow } from "ansicolor";
 
 export type InputObjectType = {
     parameters?: any;
@@ -22,7 +22,11 @@ export class Input {
         this.parameters = Parameter.generate(inputsObj.parameters);
     }
 
-    info() {
+    /**
+     * Return info of Input
+     * @returns {string}
+     */
+    info(): string {
         let inputHelp = yellow("Inputs:\n");
 
         inputHelp += `- ${yellow("Parameters: \n")}`;
@@ -39,7 +43,8 @@ export class Input {
     checkRequiredArgs(input: Input) {
         this.parameters.forEach((parameter) => {
             if (parameter.isRequired && input.getParameterValue(parameter.name) === undefined) {
-                throw new Error(`Required parameter missing '${parameter.name}'`);
+                console.error(red(`Required parameter missing '${parameter.name}'`));
+                process.exit(1);
             }
         });
         return true;
