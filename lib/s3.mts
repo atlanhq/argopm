@@ -1,8 +1,7 @@
-import { PutObjectCommand, PutObjectCommandInput, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
 import { yellow } from "ansicolor";
 import { existsSync, readFileSync } from "fs";
-import { load } from "js-yaml";
 import { Result } from "npm-package-arg";
 import { walk } from "./utils.mjs";
 

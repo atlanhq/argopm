@@ -1,6 +1,5 @@
-import { CoreV1Api, CustomObjectsApi, KubeConfig, V1ConfigMap, V1Secret } from "@kubernetes/client-node";
+import { CoreV1Api, CustomObjectsApi, KubeConfig, loadYaml, V1ConfigMap, V1Secret } from "@kubernetes/client-node";
 import { blue, bright, lightCyan, red, yellow } from "ansicolor";
-import { load } from "js-yaml";
 import { readFile } from "node:fs/promises";
 import { constants } from "../constants.mjs";
 import { K8sApiResponse as K8sApiListResponse } from "../k8s.mjs";
@@ -383,7 +382,7 @@ export class Package {
         const runtimeArguments = new Arguments(args);
         this.arguments.checkRequiredArgs(runtimeArguments);
         const yamlStr = await readFile(`${__dirname}/../static/workflows/workflow.yaml`);
-        const workflow: any = load(yamlStr.toString());
+        const workflow: any = loadYaml(yamlStr.toString());
 
         const name = this.metadata.name;
         workflow.metadata.generateName = `${name}-`;

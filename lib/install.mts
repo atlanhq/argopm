@@ -23,9 +23,9 @@ const npmInstall = function (prefixPath: string, packageName: string, registry: 
     let command: string;
     const saveParam = save ? "--save" : "--no-save";
     if (packageName === ".") {
-        command = `NPM_CONFIG_REGISTRY=${registry} npm i ${saveParam} --prefix ${prefixPath} --force`;
+        command = `NPM_CONFIG_REGISTRY=${registry} npm i ${saveParam} --prefix ${prefixPath} --force --silent`;
     } else {
-        command = `NPM_CONFIG_REGISTRY=${registry} npm i ${packageName} ${saveParam} --prefix ${prefixPath} --force`;
+        command = `NPM_CONFIG_REGISTRY=${registry} npm i ${packageName} ${saveParam} --prefix ${prefixPath} --force --silent`;
     }
     return shell.exec(command, { fatal: true });
 };
@@ -69,7 +69,7 @@ export const installGlobal = async function (
  * @param  {string} path
  * @returns string
  */
-const packageNameFromPath = function (path: string): string {
+export const packageNameFromPath = function (path: string): string {
     const packageJSONFilePath = `${path}/package.json`;
     const packageObject = JSON.parse(readFileSync(packageJSONFilePath, "utf-8"));
     return `${packageObject.name}@${packageObject.version}`;

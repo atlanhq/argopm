@@ -5,7 +5,7 @@ import { constants } from "../constants.mjs";
  * Encode a string
  * @param {string} str
  */
-const encode = function (str: string) {
+export const encode = function (str: string) {
     return str.replace(/@/g, "-").replace(/\//g, "-").replace(/:/g, "-");
 };
 
@@ -13,7 +13,7 @@ const encode = function (str: string) {
  * Special encode a string
  * @param {string} str
  */
-const specialEncode = function (str: string) {
+export const specialEncode = function (str: string) {
     if (str === ".") return "";
     return encode(str.replace(/@/g, "a-t-r").replace(/\//g, "s-l-a-s-h").replace(/:/g, "c-o-l-o-n"));
 };
@@ -22,7 +22,7 @@ const specialEncode = function (str: string) {
  * Decode a string
  * @param {string} str
  */
-const decode = function (str: string) {
+export const decode = function (str: string) {
     return str
         .replace(/a-t-r/g, "@")
         .replace(/s-l-a-s-h/g, "/")

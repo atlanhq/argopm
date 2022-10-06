@@ -60,9 +60,8 @@ local development.
 -   `GRAFANA_URL` - URL of the grafana instance
 -   `GRAFANA_API_TOKEN` - Grafana API Token
 
-A post request is sent to `GRAFANA_URL` with the JSON file content in `dashboards/grafana` and `GRAFANA_API_TOKEN` is sent in the `Authorization` 
+A post request is sent to `GRAFANA_URL` with the JSON file content in `dashboards/grafana` and `GRAFANA_API_TOKEN` is sent in the `Authorization`
 header as a bearer token. Refer to the [Grafana HTTP API Docs](https://grafana.com/docs/grafana/latest/http_api/) for more information.
-
 
 ## Helpful Documentation
 

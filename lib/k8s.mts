@@ -1,5 +1,4 @@
-import { CoreV1Api, CustomObjectsApi, KubeConfig } from "@kubernetes/client-node";
-import { load } from "js-yaml";
+import { CoreV1Api, CustomObjectsApi, KubeConfig, loadYaml, V1ConfigMap, V1Secret } from "@kubernetes/client-node";
 import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { IncomingMessage } from "node:http";
@@ -36,7 +35,7 @@ export type K8sInstallerOptionsType = {
  * @param  {GenericK8sSpecType[]} resources
  * @param  {string} name
  */
-function getResourceByName(resources: GenericK8sSpecType[], name: string) {
+export function getResourceByName(resources: GenericK8sSpecType[], name: string) {
     //TODO: Possible bottleneck if packages grow.
     const resource = resources.find(({ metadata }) => metadata.name === name);
     if (resource) {
@@ -131,7 +130,14 @@ export class K8sInstaller {
      */
     async installConfigmaps(names?: string[]) {
         const dirPath = `${this.packagePath}/configmaps/`;
-        return await this.installYamlInPath(dirPath, false, constants.CONFIGMAP_KIND, "", names, K8sInstaller.upsertConfigMap);
+        return await this.installYamlInPath<V1ConfigMap>(
+            dirPath,
+            false,
+            constants.CONFIGMAP_KIND,
+            "",
+            names,
+            K8sInstaller.upsertConfigMap
+        );
     }
 
     /**
@@ -139,7 +145,14 @@ export class K8sInstaller {
      */
     async installSecrets(names?: string[]) {
         const dirPath = `${this.packagePath}/secrets/`;
-        return await this.installYamlInPath(dirPath, false, constants.SECRET_KIND, "", names, K8sInstaller.upsertSecret);
+        return await this.installYamlInPath<V1Secret>(
+            dirPath,
+            false,
+            constants.SECRET_KIND,
+            "",
+            names,
+            K8sInstaller.upsertSecret
+        );
     }
 
     /**
@@ -148,7 +161,7 @@ export class K8sInstaller {
      */
     async installCronWorkflows(cluster: boolean, names?: string[]) {
         const dirPath = `${this.packagePath}/cronworkflows/`;
-        return await this.installYamlInPath(
+        return await this.installYamlInPath<GenericK8sSpecType>(
             dirPath,
             cluster,
             constants.ARGO_CRON_WORKFLOW_KIND,
@@ -163,7 +176,7 @@ export class K8sInstaller {
      */
     async installPipelines(names?: string[]) {
         const dirPath = `${this.packagePath}/pipelines/`;
-        return await this.installYamlInPath(
+        return await this.installYamlInPath<GenericK8sSpecType>(
             dirPath,
             false,
             constants.ARGO_DATAFLOW_KIND,
@@ -181,7 +194,7 @@ export class K8sInstaller {
         const dirPath = `${this.packagePath}/templates/`;
         const kind = cluster ? constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND : constants.ARGO_WORKFLOW_TEMPLATES_KIND;
 
-        return await this.installYamlInPath(
+        return await this.installYamlInPath<GenericK8sSpecType>(
             dirPath,
             cluster,
             kind,
@@ -199,7 +212,7 @@ export class K8sInstaller {
      * @param {string} group
      * @param {any} fn
      */
-    async installYamlInPath(
+    async installYamlInPath<T>(
         dirPath: string,
         cluster: boolean,
         kind: string,
@@ -222,7 +235,7 @@ export class K8sInstaller {
             for (const file of files) {
                 const filePath = `${dirPath}${file}`;
                 const data = await readFile(filePath, "utf8");
-                const yamlData = load(data) as GenericK8sSpecType;
+                const yamlData = loadYaml<T>(data);
 
                 if (yamlData) {
                     const fileName = file.substring(0, file.lastIndexOf("."));
@@ -331,9 +344,10 @@ export class K8sInstaller {
                     headers: { "content-type": "application/strategic-merge-patch+json" },
                 }
             );
+        } else {
+            console.debug(`${name} ${kind} not present in the cluster. Installing v${newVersion}`);
+            return await coreK8sApi.createNamespacedConfigMap(namespace, yamlObject);
         }
-        console.debug(`${name} ${kind} not present in the cluster. Installing v${newVersion}`);
-        return await coreK8sApi.createNamespacedConfigMap(namespace, yamlObject);
     }
 
     /**
@@ -391,9 +405,10 @@ export class K8sInstaller {
                     headers: { "content-type": "application/strategic-merge-patch+json" },
                 }
             );
+        } else {
+            console.debug(`${name} ${kind} not present in the cluster. Installing v${newVersion}`);
+            return await coreK8sApi.createNamespacedSecret(namespace, yamlObject);
         }
-        console.debug(`${name} ${kind} not present in the cluster. Installing v${newVersion}`);
-        return await coreK8sApi.createNamespacedSecret(namespace, yamlObject);
     }
 
     /**

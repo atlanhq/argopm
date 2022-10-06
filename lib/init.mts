@@ -1,4 +1,3 @@
-import { red } from "ansicolor";
 import shell from "shelljs";
 import { getDirName } from "./utils.mjs";
 
@@ -19,7 +18,7 @@ export const init = async (force: boolean) => {
     const packageName = pathComponents[pathComponents.length - 1];
     console.log(`Installing from the current directory (${dirPath}) with the package name "${packageName}"...`);
 
-    if (shell.ls("package.json").length > 0 && !force) {
+    if (!force && shell.test("-e", "package.json")) {
         throw new Error(`Files already present in the ${dirPath}. Run this command again with --force to ignore`);
     }
 

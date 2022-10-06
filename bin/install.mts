@@ -232,7 +232,7 @@ yarg
                 alias: "f",
                 type: "boolean",
                 description: "Force the command",
-                default: true,
+                default: false,
             }),
         handler: async (argv) => {
             const packageName = await init(argv.force);

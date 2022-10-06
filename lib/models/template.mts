@@ -1,5 +1,5 @@
+import { loadYaml } from "@kubernetes/client-node";
 import { blue, bright } from "ansicolor";
-import { load } from "js-yaml";
 import { readFile } from "node:fs/promises";
 import { GenericK8sSpecType } from "../k8s.mjs";
 import { getDirName } from "../utils.mjs";
@@ -51,7 +51,7 @@ export class Template {
 
         this.inputs.checkRequiredArgs(runtimeInputs);
         const data = await readFile(`${__dirname}/../static/workflows/template-workflow.yaml`);
-        const workflow: GenericK8sSpecType = load(data.toString());
+        const workflow = loadYaml<GenericK8sSpecType>(data.toString());
 
         workflow.metadata.generateName = `${this.name}-`;
         if (serviceAccountName) {
