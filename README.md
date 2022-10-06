@@ -1,82 +1,70 @@
-# argopm - A package manager for Argo
+# Getting started with argopm - Atlan's Package Manager
 
-This is an Argo package manager that helps you find, install and publish packages to your Argo cluster.
+This package was bootstrapped using argopm
 
-![npm-publish-status](https://github.com/atlanhq/argopm/actions/workflows/npm-publish.yml/badge.svg)
+-   Package Name: argopm
 
-### Requirements
+## Package Structure
 
-1. Node.js `v16.9.0`
-
-Please ensure you have `kubectl` access to the Kubernetes cluster where Argo is deployed and the AWS credentials for writing files to AWS S3.
-
-### Installation
-
-```bash
-npm i -g argopm
 ```
-
-### Usage
-
-```bash
-$ argopm --help
-argopm <command>
-
-Commands:
-  argopm install <package>          Install a package. Package name can be of the format package@version                        [aliases: i]
-  argopm info <package> [template]  Get info of the installed package or a specific template in the package
-  argopm run <package> [template]   Run the package or the package template. Pass in arguments using --
-  argopm uninstall <package>        Uninstall a package. Uninstalls all dependencies associated with the package.            [aliases: u, r]
-  argopm init                       Initializes an Argo package inside the current working directory
-  argopm list                       List all the packages installed in the namespace                                            [aliases: l]
-
-Options:
-  --version        Show version number                                                                                                 [boolean]
-  --namespace, -n  Kubernetes namespace. Packages will be installed in this namespace                                 [string] [default: "argo"]
-  --registry, -r   Argo Package Registry                                                     [string] [default: "https://packages.atlan.com"]
-  --pipeline, -p   Enable Argo Pipeline type                                                                          [boolean] [default: false]
-  --cluster, -c    Install the template at cluster level                                                              [boolean] [default: false]
-  --help           Show help                                                                                                           [boolean]
-```
-
-### Package Structure
-
-This is the structure of a new package created with `argopm`. The
-
-```bash
 .
 ├── README.md
 ├── index.js
 ├── package.json
-├── configmaps # configmaps to be installed in the k8s cluster
-│   ├── package-config.yaml
-│   └── semaphore-config.yaml
-├── cronworkflows # Cron Workflows to be installed on Argo
-│   └── package-cronworkflow.yaml
-├── pipelines # Argo Dataflow pipelines to be installed
-│   └── package-pipeline.yaml
-├── secrets # Secrets to be created in the k8s cluster
-│   └── package-secret.yaml
-├── static # Static data to be uploaded on S3
-│   └── data.json
-└── templates # Workflow templates to be installed on Argo
-    └── package-template.yaml
+├── configmaps
+│   ├── README.md
+│   ├── default-semaphore.yaml
+│   └── default.yaml
+├── cronworkflows
+│   ├── README.md
+│   └── default.yaml
+├── pipelines
+│   ├── README.md
+│   └── default.yaml
+├── secrets
+│   ├── README.md
+│   └── default.yaml
+├── static
+│   ├── README.md
+│   └── data.json
+└── templates
+    ├── README.md
+    └── default.yaml
 
-6 directories, 10 files
+6 directories, 16 files
 ```
 
-### Static Files
+## Available Commands
 
-Everything present in the `static` subdirectory of a package will be uploaded to AWS S3 with the following location prefix :
+-   `argopm install`
+-   `argopm list`
+-   `argopm run`
+-   `argopm info`
 
-```
-<bucket-name>/argo-artifacts/argopm/<package-name>/<version>/static/
-```
+For more details on these commands run `argom --help`
 
-### Salient Features:
+## Pre-requisites
 
-1. Built as a `npm` package
-2. Works on marketplace built on [verdaccio](https://verdaccio.org). Verdaccio is an open-source _npm-like_ marketplace
-3. Uses the K8s Custom resources to install packages into your Argo cluster
-4. Support for uploading static files to the artifactory (available for AWS S3)
-5. Manages versions and installed packages using K8s labels on Argo workflow templates
+-   To run `argopm install` you must have `kubectl` access to the cluter where Argo is installed
+-   Files added in the `static` subdirectory are uploaded to the configured S3 artifactory bucket, make sure you have
+    the AWS credentials setup in your shell to upload static files.
+
+## Grafana Dashboards
+
+Argopm supports declaring and uploading grafana dashboards as a part of the package. Files available in `dashboards/grafana/` will be uploaded to
+a specified Grafana instance.
+
+Declare the following environment variables if you want to upload dashboards to grafana. You can put these in the `.env` file too for
+local development.
+
+-   `GRAFANA_URL` - URL of the grafana instance
+-   `GRAFANA_API_TOKEN` - Grafana API Token
+
+A post request is sent to `GRAFANA_URL` with the JSON file content in `dashboards/grafana` and `GRAFANA_API_TOKEN` is sent in the `Authorization` 
+header as a bearer token. Refer to the [Grafana HTTP API Docs](https://grafana.com/docs/grafana/latest/http_api/) for more information.
+
+
+## Helpful Documentation
+
+-   https://argoproj.github.io/argo-workflows/
+-   https://www.npmjs.com/package/argopm

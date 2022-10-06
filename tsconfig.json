@@ -4,11 +4,13 @@
     "outDir": "./dist/",
     "module": "esnext",
     "target": "esnext",
+    "lib": ["ESNext"],
     "allowJs": true,
     "esModuleInterop": true,
     "moduleResolution": "Node",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "types": ["node", "jest"]
   },
   "include": ["./lib/**/*", "./bin/**/*"],
-  "exclude": ["./lib/static/*"]
+  "exclude": ["./lib/static/*", "node_modules"]
 }

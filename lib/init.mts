@@ -1,3 +1,4 @@
+import { red } from "ansicolor";
 import shell from "shelljs";
 import { getDirName } from "./utils.mjs";
 
@@ -11,19 +12,18 @@ import { getDirName } from "./utils.mjs";
  * @param {boolean} force
  */
 export const init = async (force: boolean) => {
-    // const dirPath = "/tmp/test-package";
     const dirPath = shell.pwd();
-    const dirName = getDirName(import.meta.url);
+    const __dirname = getDirName(import.meta.url);
 
     const pathComponents = dirPath.split("/");
     const packageName = pathComponents[pathComponents.length - 1];
     console.log(`Installing from the current directory (${dirPath}) with the package name "${packageName}"...`);
 
-    if (!force && shell.ls("package.json").length > 0) {
-        throw new Error(`Files already present in the ${dirName}. Run this command again with --force to ignore`);
+    if (shell.ls("package.json").length > 0 && !force) {
+        throw new Error(`Files already present in the ${dirPath}. Run this command again with --force to ignore`);
     }
 
-    const skeletonPackagePath = `${dirName}/static/package`;
+    const skeletonPackagePath = `${__dirname}/static/package`;
     shell.cp("-R", `${skeletonPackagePath}/*`, dirPath);
     shell.sed("-i", /NAME/g, packageName, `${dirPath}/*.*`);
 

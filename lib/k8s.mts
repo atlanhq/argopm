@@ -131,7 +131,7 @@ export class K8sInstaller {
      */
     async installConfigmaps(names?: string[]) {
         const dirPath = `${this.packagePath}/configmaps/`;
-        return await this.installYamlInPath(dirPath, false, constants.CONFIGMAP_KIND, "", K8sInstaller.upsertConfigMap);
+        return await this.installYamlInPath(dirPath, false, constants.CONFIGMAP_KIND, "", names, K8sInstaller.upsertConfigMap);
     }
 
     /**
@@ -139,7 +139,7 @@ export class K8sInstaller {
      */
     async installSecrets(names?: string[]) {
         const dirPath = `${this.packagePath}/secrets/`;
-        return await this.installYamlInPath(dirPath, false, constants.SECRET_KIND, "", K8sInstaller.upsertSecret);
+        return await this.installYamlInPath(dirPath, false, constants.SECRET_KIND, "", names, K8sInstaller.upsertSecret);
     }
 
     /**
@@ -153,6 +153,7 @@ export class K8sInstaller {
             cluster,
             constants.ARGO_CRON_WORKFLOW_KIND,
             constants.ARGO_K8S_API_GROUP,
+            names,
             K8sInstaller.upsertTemplate
         );
     }
@@ -167,6 +168,7 @@ export class K8sInstaller {
             false,
             constants.ARGO_DATAFLOW_KIND,
             constants.ARGO_DATAFLOW_K8S_API_GROUP,
+            names,
             K8sInstaller.upsertTemplate
         );
     }
@@ -184,6 +186,7 @@ export class K8sInstaller {
             cluster,
             kind,
             constants.ARGO_K8S_API_GROUP,
+            names,
             K8sInstaller.upsertTemplate
         );
     }

@@ -9,7 +9,7 @@ import { init } from "../lib/init.mjs";
 import { install, installGlobal } from "../lib/install.mjs";
 import { K8sInstallerOptionsType } from "../lib/k8s.mjs";
 import { Package } from "../lib/models/package.mjs";
-import { constants } from "./constants.mjs";
+import { constants } from "../lib/constants.mjs";
 
 asTable.configure({
     title: (x) => bright(x),
@@ -48,6 +48,12 @@ yarg
                     alias: "s",
                     type: "boolean",
                     description: "Save the package as a dependency in the current project",
+                    default: true,
+                })
+                .option("dry-run", {
+                    alias: "d",
+                    type: "boolean",
+                    description: "Perform an install dry-run and display to-be-installed K8s resources",
                     default: true,
                 })
                 .option("force", {
@@ -132,11 +138,11 @@ yarg
             } = argv;
             const options: K8sInstallerOptionsType = { force, cronString, timeZone };
             const installParts: any = {
-                [constants.ARGO_WORKFLOW_TEMPLATES_KIND]: workflowTemplates.length > 0 ? workflowTemplates : undefined,
-                [constants.CONFIGMAP_KIND]: configmaps.length > 0 ? configmaps : undefined,
-                [constants.SECRET_KIND]: secrets.length > 0 ? secrets : undefined,
-                [constants.ARGO_CRON_WORKFLOW_KIND]: cronworkflows.length > 0 ? cronworkflows : undefined,
-                [constants.ARGO_DATAFLOW_KIND]: pipelines.length > 0 ? pipelines : undefined,
+                [constants.ARGO_WORKFLOW_TEMPLATES_KIND]: workflowTemplates,
+                [constants.CONFIGMAP_KIND]: configmaps,
+                [constants.SECRET_KIND]: secrets,
+                [constants.ARGO_CRON_WORKFLOW_KIND]: cronworkflows,
+                [constants.ARGO_DATAFLOW_KIND]: pipelines,
             };
 
             if (global) {
@@ -245,7 +251,7 @@ yarg
             console.log(asTable(argoPackages.map((p) => p.info)));
         },
     })
-    .demandCommand()
+    // .demandCommand()
     .wrap(yarg.terminalWidth())
     .help().argv;
 

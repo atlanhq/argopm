@@ -378,11 +378,11 @@ export class Package {
             throw "Package is not runnable";
         }
 
-        const dirName = getDirName(import.meta.url);
+        const __dirname = getDirName(import.meta.url);
 
         const runtimeArguments = new Arguments(args);
         this.arguments.checkRequiredArgs(runtimeArguments);
-        const yamlStr = await readFile(`${dirName}/../static/workflows/workflow.yaml`);
+        const yamlStr = await readFile(`${__dirname}/../static/workflows/workflow.yaml`);
         const workflow: any = load(yamlStr.toString());
 
         const name = this.metadata.name;

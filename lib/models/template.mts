@@ -46,11 +46,11 @@ export class Template {
         imagePullSecrets: string,
         cluster: boolean
     ) {
-        const dirName = getDirName(import.meta.url);
+        const __dirname = getDirName(import.meta.url);
         const runtimeInputs = new Input(args);
 
         this.inputs.checkRequiredArgs(runtimeInputs);
-        const data = await readFile(`${dirName}/../static/workflows/template-workflow.yaml`);
+        const data = await readFile(`${__dirname}/../static/workflows/template-workflow.yaml`);
         const workflow: GenericK8sSpecType = load(data.toString());
 
         workflow.metadata.generateName = `${this.name}-`;
