@@ -6,6 +6,9 @@ import rimraf from "rimraf";
 import { Parameter } from "./models/parameter.mjs";
 import { hideBin, Parser } from "yargs/helpers";
 import { fileURLToPath } from "url";
+import { loadYaml } from "@kubernetes/client-node";
+import { readFileSync } from "fs";
+import { readFile } from "fs/promises";
 
 const rimrafPromise = promisify(rimraf);
 
@@ -84,3 +87,13 @@ export function generateArguments() {
 
     return { parameters };
 }
+
+/**
+ * Parses the YAML file and returns and object of it.
+ * 
+ * @param path The YAML file path
+ * @returns object with the YAML content
+ */
+export const getResourceFromYaml = async <T,>(path: string) => {
+    return loadYaml<T>((await readFile(path)).toString());
+};

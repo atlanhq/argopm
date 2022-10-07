@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "esbuild ./bin/install.mts --bundle --platform=node --format=esm --outfile=./dist/argopm.mjs --external:shelljs --banner:js=\"import {createRequire} from 'module';const require=createRequire(import.meta.url);\" && sed -i.bak 's,/bin/env -S npx ts-node --esm,/bin/env node,g' ./dist/argopm.mjs",
-    "test": "NODE_NO_WARNINGS=1 NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --coverage",
+    "test": "NODE_NO_WARNINGS=1 NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --coverage --runInBand",
+    "test-debug": "NODE_OPTIONS=--experimental-vm-modules node --inspect-brk node_modules/.bin/jest --runInBand",
     "prettier": "prettier --write .",
     "eslint": "eslint --fix .",
     "lint-staged": "lint-staged"

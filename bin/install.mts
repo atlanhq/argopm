@@ -1,5 +1,5 @@
 #!/usr/bin/env -S npx ts-node --esm
-import { bright, cyan, dim, green, yellow } from "ansicolor";
+import { bright, cyan, dim, green, strip, yellow } from "ansicolor";
 import asTable from "as-table";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -19,6 +19,9 @@ asTable.configure({
 
 const yarg = yargs(hideBin(process.argv));
 
+
+const applyColor = (color: boolean, log: any) => color ? log : strip(log);
+
 yarg
     .option("namespace", {
         alias: "n",
@@ -37,6 +40,11 @@ yarg
         type: "boolean",
         description: "Install the template at cluster level",
         default: false,
+    })
+    .option("color", {
+        type: "boolean",
+        description: "Set --no-color to disable ANSI colors",
+        default: true,
     })
     .command({
         command: "install <package>",
@@ -168,7 +176,7 @@ yarg
                 );
             }
 
-            console.log(installHelp.replace(/NAME/g, packageName));
+            console.log(applyColor(argv.color, installHelp.replace(/NAME/g, packageName)));
         },
     })
     .command({
@@ -183,7 +191,7 @@ yarg
             const info = argv.template
                 ? argoPackage.templateInfo(argv.template as string)
                 : await argoPackage.packageInfo(argv.namespace as string);
-            console.log(info);
+            console.log(applyColor(argv.color as boolean, info));
         },
     })
     .command({
@@ -212,7 +220,7 @@ yarg
                 argv.imagePullSecrets as string,
                 argv.cluster as boolean
             );
-            console.log(green(`Package run successful.`));
+            console.log(applyColor(argv.color as boolean, green(`Package run successful.`)));
         },
     })
     .command({
@@ -221,7 +229,7 @@ yarg
         describe: "Uninstall a package. Uninstalls all dependencies associated with the package.",
         handler: async (argv) => {
             await uninstall(argv.namespace as string, argv.package as string, argv.cluster as boolean);
-            console.log(green(`Successfully deleted package ${argv.package}`));
+            console.log(applyColor(argv.color as boolean, green(`Successfully deleted package ${argv.package}`)));
         },
     })
     .command({
@@ -236,7 +244,7 @@ yarg
             }),
         handler: async (argv) => {
             const packageName = await init(argv.force);
-            console.log(initHelp.replace(/NAME/g, packageName));
+            console.log(applyColor(argv.color as boolean, initHelp.replace(/NAME/g, packageName)));
         },
     })
     .command({
@@ -246,9 +254,9 @@ yarg
         handler: async (argv) => {
             const argoPackages = await Package.list(argv.namespace as string, argv.cluster as boolean);
             if (argoPackages.length === 0) {
-                console.log(yellow("No packages found"));
+                console.log(applyColor(argv.color as boolean, yellow("No packages found")));
             }
-            console.log(asTable(argoPackages.map((p) => p.info)));
+            console.log(applyColor(argv.color as boolean, asTable(argoPackages.map((p) => p.info))));
         },
     })
     // .demandCommand()
