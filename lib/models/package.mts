@@ -212,7 +212,7 @@ export class Package {
         response.body.items.forEach((template: any) => {
             const argoPackage = new Package(template);
             if (argoPackage.info.name !== this.info.name) {
-                packages.push(new Package(template));
+                packages.push(argoPackage);
             }
         });
         return packages;

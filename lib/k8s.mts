@@ -1,4 +1,4 @@
-import { CoreV1Api, CustomObjectsApi, KubeConfig, loadYaml, V1ConfigMap, V1Secret } from "@kubernetes/client-node";
+import { CoreV1Api, CustomObjectsApi, KubeConfig, loadYaml, V1ConfigMap, V1ObjectMeta, V1Secret } from "@kubernetes/client-node";
 import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { IncomingMessage } from "node:http";
@@ -15,7 +15,7 @@ const coreK8sApi = kc.makeApiClient(CoreV1Api);
 export type GenericK8sSpecType = {
     apiVersion?: string;
     kind?: string;
-    metadata?: any;
+    metadata?: V1ObjectMeta;
     spec?: any;
 };
 
@@ -535,9 +535,10 @@ export class K8sInstaller {
                         cluster,
                         apiGroup
                     );
+                } else {
+                    console.debug(`${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`);
+                    return await K8sInstaller.patchCustomResource(name, namespace, plural, yamlObject, cluster, apiGroup);
                 }
-                console.debug(`${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`);
-                return await K8sInstaller.patchCustomResource(name, namespace, plural, yamlObject, cluster, apiGroup);
             }
         } else {
             console.debug(`${name} ${yamlObject.kind} not present in the cluster. Installing v${newVersion}`);

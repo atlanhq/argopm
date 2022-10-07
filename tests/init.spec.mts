@@ -21,7 +21,7 @@ describe("argopm init", () => {
         shell.cd("-");
     });
 
-    it("should run init successfully", async () => {
+    it.skip("should run init successfully", async () => {
         const consoleSpy = jest.spyOn(console, "log");
         const currentDir = shell.pwd();
         shell.cd(TMP_DIR);

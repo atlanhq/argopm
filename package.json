@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "esbuild ./bin/install.mts --bundle --platform=node --format=esm --outfile=./dist/argopm.mjs --external:shelljs --banner:js=\"import {createRequire} from 'module';const require=createRequire(import.meta.url);\" && sed -i.bak 's,/bin/env -S npx ts-node --esm,/bin/env node,g' ./dist/argopm.mjs",
-    "test": "NODE_NO_WARNINGS=1 NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --coverage --silent",
+    "test": "NODE_NO_WARNINGS=1 NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --coverage",
     "prettier": "prettier --write .",
     "eslint": "eslint --fix .",
     "lint-staged": "lint-staged"
@@ -21,7 +21,6 @@
     "axios": "^0.27.2",
     "compare-versions": "^5.0.1",
     "dotenv": "^16.0.2",
-    "js-yaml": "^4.1.0",
     "npm-package-arg": "^9.1.0",
     "rimraf": "^3.0.2",
     "shelljs": "^0.8.5",
@@ -29,7 +28,6 @@
   },
   "devDependencies": {
     "@types/jest": "^29.0.3",
-    "@types/js-yaml": "^4.0.5",
     "@types/node": "^18.8.1",
     "@types/npm-package-arg": "^6.1.1",
     "@types/rimraf": "^3.0.2",
@@ -77,6 +75,7 @@
         }
       ]
     },
+    "testTimeout": 20000,
     "testMatch": [
       "**/?(*.)+(spec|test).m[jt]s"
     ],

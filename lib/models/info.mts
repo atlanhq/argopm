@@ -78,7 +78,8 @@ export class PackageInfo {
      * @returns {string}
      */
     getDependencyLabel(): string {
-        const parentName = encode(`${this.name}@${this.version}`);
+        const parentName = specialEncode(`${this.name}@${this.version}`);
+        // const parentName = `${this.name}@${this.version}`;
         return `${constants.ARGOPM_LIBRARY_PARENT_LABEL}=${parentName}`;
     }
 
@@ -87,7 +88,7 @@ export class PackageInfo {
      * @returns {string}
      */
     getPackageLabel(): string {
-        return `${constants.ARGOPM_LIBRARY_NAME_LABEL}=${encode(this.name)}`;
+        return `${constants.ARGOPM_LIBRARY_NAME_LABEL}=${specialEncode(this.name)}`;
     }
 
     /**

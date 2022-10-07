@@ -99,68 +99,67 @@ export const install = async function (
     let parentPackageName = packageName;
     const nodeModulesPath = `${dirPath}/node_modules`;
 
-    if (packageName === ".") {
-        parentPackageName = packageNameFromPath(`${dirPath}`);
-        registry = "local";
-    } else {
-        const cleanedPackageParts = packageName.split("@");
-        let cleanedPackageName = cleanedPackageParts.slice(0, -1).join("@");
-        if (cleanedPackageName == "") {
-            cleanedPackageName = packageName;
-        }
-        parentPackageName = packageNameFromPath(`${nodeModulesPath}/${cleanedPackageName}`);
-    }
-
-    const processInstallers = async (dirPath: string) => {
+    const processInstallers = async (_dirPath: string) => {
         // Upload Static Files
         const s3Uploader = new S3(
             constants.ATLAN_DEFAULTS_CONFIGMAP_NAME,
             constants.ATLAN_DEFAULTS_CONFIGMAP_NAMESPACE,
-            npa(packageNameFromPath(dirPath))
+            npa(packageNameFromPath(_dirPath))
         );
 
         // Install Template on Argo
-        const k8sInstaller = new K8sInstaller(dirPath, namespace, parentPackageName, registry, options);
+        const k8sInstaller = new K8sInstaller(_dirPath, namespace, parentPackageName, registry, options);
 
         // Install Dashboards
-        const dashboardInstaller = new DashboardInstaller(k8sInstaller.package, dirPath);
+        const dashboardInstaller = new DashboardInstaller(k8sInstaller.package, _dirPath);
 
         await k8sInstaller.install(cluster, installParts);
         await dashboardInstaller.install();
         await s3Uploader.initialize();
-        return await s3Uploader.uploadStaticFiles(dirPath);
+        return await s3Uploader.uploadStaticFiles(_dirPath);
     };
 
-    if (!excludeDependencies) {
-        const packageJSONFilePath = `${dirPath}/package.json`;
-        if (packageName === "." && save && !existsSync(packageJSONFilePath)) {
-            console.error(
-                red(`package.json is not present in the current dir ${dirPath}. Try with --no-save argument`)
-            );
-            process.exit(1);
-        }
-
-        npmInstall(dirPath, packageName, registry, save);
-
-        let dirs: string[] = [];
-
-        if (existsSync(nodeModulesPath)) {
-            console.log(yellow(`Installing parent package ${parentPackageName}`));
-            dirs = await listDirs(nodeModulesPath);
-            dirs = dirs.filter((dir) => dir !== undefined);
-        }
-
-        dirs.forEach(async (dir) => {
-            if (dir && dir?.split("/").slice(-1)[0].startsWith("@")) {
-                const innerDirs = await listDirs(dir);
-                innerDirs.forEach(async (innerDir) => {
-                    await processInstallers(innerDir);
-                });
-            } else {
-                await processInstallers(dir);
-            }
-        });
+    const packageJSONFilePath = `${dirPath}/package.json`;
+    if (packageName === "." && save && !existsSync(packageJSONFilePath)) {
+        console.error(
+            red(`package.json is not present in the current dir ${dirPath}. Try with --no-save argument`)
+        );
+        process.exit(1);
     }
+
+    npmInstall(dirPath, packageName, registry, save);
+
+    let dirs: string[] = [];
+
+    if (existsSync(nodeModulesPath)) {
+        if (packageName !== ".") {
+            const cleanedPackageParts = packageName.split("@");
+            let cleanedPackageName = cleanedPackageParts.slice(0, -1).join("@");
+            if (cleanedPackageName == "") {
+                cleanedPackageName = packageName;
+            }
+
+            parentPackageName = packageNameFromPath(`${nodeModulesPath}/${cleanedPackageName}`);
+        } else {
+            parentPackageName = packageNameFromPath(`${dirPath}`);
+            registry = "local";
+        }
+
+        console.log(yellow(`Installing parent package ${parentPackageName}`));
+        dirs = await listDirs(nodeModulesPath);
+        dirs = dirs.filter((dir) => dir !== undefined);
+    }
+
+    dirs.forEach(async (dir) => {
+        if (dir && dir?.split("/").slice(-1)[0].startsWith("@")) {
+            const innerDirs = await listDirs(dir);
+            innerDirs.forEach(async (innerDir) => {
+                await processInstallers(innerDir);
+            });
+        } else {
+            await processInstallers(dir);
+        }
+    });
 
     if (packageName === ".") {
         parentPackageName = packageNameFromPath(`${dirPath}`);
