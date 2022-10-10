@@ -1,6 +1,5 @@
 import { CoreV1Api, CustomObjectsApi, KubeConfig, loadYaml, V1ConfigMap, V1ObjectMeta, V1Secret } from "@kubernetes/client-node";
-import { existsSync, readFileSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { IncomingMessage } from "node:http";
 import { constants } from "./constants.mjs";
 import { PackageInfo, PackageObjectType } from "./models/info.mjs";
@@ -44,6 +43,13 @@ export function getResourceByName(resources: GenericK8sSpecType[], name: string)
     return null;
 }
 
+export const appendDryRunTag = (dryRun, message) => {
+    if (dryRun) {
+        message += " (dry-run)";
+    }
+    console.debug(message);
+};
+
 /**
  * CHeck existing Resource object.
  * @param {Resource} resource
@@ -58,7 +64,8 @@ function checkExistingResource(
     name: string,
     kind: string,
     newVersion: string,
-    forceUpdate: boolean
+    forceUpdate: boolean,
+    dryRun?: string,
 ): { shouldUpdate: boolean; msgPrefix: string } {
     const needsUpdate = resource.needsUpdate(newVersion);
 
@@ -67,9 +74,9 @@ function checkExistingResource(
 
     if (!shouldUpdate) {
         if (resource.isNewer(newVersion)) {
-            console.debug(`${msgPrefix} v${resource.version} installed is newer than v${newVersion}. Skipping update.`);
+            appendDryRunTag(dryRun, `${msgPrefix} v${resource.version} installed is newer than v${newVersion}. Skipping update.`);
         } else {
-            console.debug(`${msgPrefix} v${resource.version} is already latest version. Skipping update.`);
+            appendDryRunTag(dryRun, `${msgPrefix} v${resource.version} is already latest version. Skipping update.`);
         }
     }
 
@@ -82,6 +89,8 @@ export class K8sInstaller {
     forceUpdate: boolean;
     parentPackage: string;
     registry: string;
+    dryRun: boolean;
+    installParts: any;
     package: PackageObjectType;
     cronString: string;
     timeZone: string;
@@ -93,6 +102,7 @@ export class K8sInstaller {
      * @param {string} namespace Namespace to install the package in
      * @param {string} parentPackage Parent package of the format <packagename>@<version>
      * @param {string} registry Package registry
+     * @param {boolean} dryRun Run K8s API functions as dry-run
      * @param {K8sInstallerOptionsType} options
      */
     constructor(
@@ -100,6 +110,8 @@ export class K8sInstaller {
         namespace: string,
         parentPackage: string,
         registry: string,
+        dryRun: boolean,
+        installParts: any,
         options: K8sInstallerOptionsType
     ) {
         this.packagePath = packagePath;
@@ -107,6 +119,8 @@ export class K8sInstaller {
         this.forceUpdate = options.force;
         this.parentPackage = parentPackage;
         this.registry = registry;
+        this.dryRun = dryRun;
+        this.installParts = installParts;
         this.package = JSON.parse(readFileSync(`${this.packagePath}/package.json`, "utf-8"));
         this.cronString = options.cronString;
         this.timeZone = options.timeZone;
@@ -116,13 +130,43 @@ export class K8sInstaller {
      * Installs the given package to Argo K8s deployment
      * @param {boolean} cluster
      */
-    async install(cluster: boolean, installParts: { [k: string]: string[] }) {
-        console.log(`Installing package ${this.package.name}@${this.package.version}`);
-        await this.installConfigmaps(installParts[constants.CONFIGMAP_KIND]);
-        await this.installSecrets(installParts[constants.SECRET_KIND]);
-        await this.installPipelines(installParts[constants.ARGO_DATAFLOW_KIND]);
-        await this.installTemplates(cluster, installParts[constants.ARGO_WORKFLOW_TEMPLATES_KIND]);
-        await this.installCronWorkflows(cluster, installParts[constants.ARGO_CRON_WORKFLOW_KIND]);
+    async install(cluster: boolean) {
+        appendDryRunTag(this.dryRun, `Installing package ${this.package.name}@${this.package.version}`);
+
+        /**
+         * This condition is needed because:
+         * - when the entire installParts object is empty, it means install all
+         * - otherwise, install only the K8s resources specified in each specific kind,
+         *   so "undefined" and empty list are not similar truthy conditions at this point
+         */
+        let toInstall = [];
+        if (Object.keys(this.installParts).filter(k => this.installParts[k] !== undefined).length > 0) {
+            if (this.installParts[constants.CONFIGMAP_KIND]) {
+                toInstall.push(this.installConfigmaps(this.installParts[constants.CONFIGMAP_KIND]));
+            }
+            if (this.installParts[constants.SECRET_KIND]) {
+                toInstall.push(this.installSecrets(this.installParts[constants.SECRET_KIND]));
+            }
+            if (this.installParts[constants.ARGO_DATAFLOW_KIND]) {
+                toInstall.push(this.installPipelines(this.installParts[constants.ARGO_DATAFLOW_KIND]));
+            }
+            if (this.installParts[constants.ARGO_WORKFLOW_TEMPLATES_KIND]) {
+                toInstall.push(this.installTemplates(cluster, this.installParts[constants.ARGO_WORKFLOW_TEMPLATES_KIND]));
+            }
+            if (this.installParts[constants.ARGO_CRON_WORKFLOW_KIND]) {
+                toInstall.push(this.installCronWorkflows(cluster, this.installParts[constants.ARGO_CRON_WORKFLOW_KIND]));
+            }
+        } else {
+            toInstall = [
+                this.installConfigmaps(),
+                this.installSecrets(),
+                this.installPipelines(),
+                this.installTemplates(cluster),
+                this.installCronWorkflows(cluster),
+            ];
+        }
+
+        return await Promise.all(toInstall).then(results => results.reduce((prev, curr) => prev + curr));
     }
 
     /**
@@ -212,7 +256,7 @@ export class K8sInstaller {
      * @param {string} group
      * @param {any} fn
      */
-    async installYamlInPath<T>(
+    async installYamlInPath<T extends GenericK8sSpecType>(
         dirPath: string,
         cluster: boolean,
         kind: string,
@@ -225,19 +269,22 @@ export class K8sInstaller {
             group: string,
             yamlObject: GenericK8sSpecType,
             cluster: boolean,
-            forceUpdate: boolean
+            forceUpdate: boolean,
+            dryRun?: string,
         ) => void
     ) {
+        let installed: number;
         if (existsSync(dirPath)) {
-            const files = (await readdir(dirPath)).filter(
+            const files = (readdirSync(dirPath)).filter(
                 (file: string) => file.endsWith(".yaml") || file.endsWith(".yml")
             );
+            const toInstall = [];
             for (const file of files) {
                 const filePath = `${dirPath}${file}`;
-                const data = await readFile(filePath, "utf8");
+                const data = readFileSync(filePath, "utf8");
                 const yamlData = loadYaml<T>(data);
 
-                if (yamlData) {
+                if (yamlData && (names === undefined || names?.includes(yamlData.metadata?.name))) {
                     const fileName = file.substring(0, file.lastIndexOf("."));
                     const folder = dirPath
                         .split("/")
@@ -245,10 +292,12 @@ export class K8sInstaller {
                         .pop();
 
                     const apmYAML = this.addAPMLabels(yamlData, folder, fileName);
-                    fn(this.package.name, this.namespace, kind, group, apmYAML, cluster, this.forceUpdate);
+                    toInstall.push(fn(this.package.name, this.namespace, kind, group, apmYAML, cluster, this.forceUpdate, this.dryRun ? "All" : undefined));
                 }
             }
+            installed = await Promise.all(toInstall).then(results => results.length);
         }
+        return installed;
     }
 
     /**
@@ -307,7 +356,8 @@ export class K8sInstaller {
         group: string,
         yamlObject: GenericK8sSpecType,
         cluster: boolean,
-        forceUpdate: boolean
+        forceUpdate: boolean,
+        dryRun?: string,
     ) {
         const response = await coreK8sApi.listNamespacedConfigMap(
             namespace,
@@ -324,29 +374,26 @@ export class K8sInstaller {
         const isPresent = Boolean(resource);
 
         if (isPresent) {
-            const { shouldUpdate, msgPrefix } = checkExistingResource(resource, name, kind, newVersion, forceUpdate);
-
-            if (!shouldUpdate) {
-                return;
+            const { shouldUpdate, msgPrefix } = checkExistingResource(resource, name, kind, newVersion, forceUpdate, dryRun);
+            if (shouldUpdate) {
+                appendDryRunTag(dryRun, `${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`)
+                return await coreK8sApi.patchNamespacedConfigMap(
+                    name,
+                    namespace,
+                    yamlObject,
+                    undefined,
+                    dryRun,
+                    undefined,
+                    undefined,
+                    undefined,
+                    {
+                        headers: { "content-type": "application/strategic-merge-patch+json" },
+                    }
+                );
             }
-
-            console.debug(`${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`);
-            return await coreK8sApi.patchNamespacedConfigMap(
-                name,
-                namespace,
-                yamlObject,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                {
-                    headers: { "content-type": "application/strategic-merge-patch+json" },
-                }
-            );
         } else {
-            console.debug(`${name} ${kind} not present in the cluster. Installing v${newVersion}`);
-            return await coreK8sApi.createNamespacedConfigMap(namespace, yamlObject);
+            appendDryRunTag(dryRun, `${name} ${kind} not present in the cluster. Installing v${newVersion}`);
+            return await coreK8sApi.createNamespacedConfigMap(namespace, yamlObject, undefined, dryRun);
         }
     }
 
@@ -368,7 +415,8 @@ export class K8sInstaller {
         group: string,
         yamlObject: GenericK8sSpecType,
         cluster: boolean,
-        forceUpdate: boolean
+        forceUpdate: boolean,
+        dryRun?: string,
     ) {
         const response = await coreK8sApi.listNamespacedSecret(
             namespace,
@@ -385,29 +433,26 @@ export class K8sInstaller {
         const isPresent = Boolean(resource);
 
         if (isPresent) {
-            const { shouldUpdate, msgPrefix } = checkExistingResource(resource, name, kind, newVersion, forceUpdate);
-
-            if (!shouldUpdate) {
-                return;
+            const { shouldUpdate, msgPrefix } = checkExistingResource(resource, name, kind, newVersion, forceUpdate, dryRun);
+            if (shouldUpdate) {
+                appendDryRunTag(dryRun, `${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`);
+                return await coreK8sApi.patchNamespacedSecret(
+                    name,
+                    namespace,
+                    yamlObject,
+                    undefined,
+                    dryRun,
+                    undefined,
+                    undefined,
+                    undefined,
+                    {
+                        headers: { "content-type": "application/strategic-merge-patch+json" },
+                    }
+                );
             }
-
-            console.debug(`${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`);
-            return await coreK8sApi.patchNamespacedSecret(
-                name,
-                namespace,
-                yamlObject,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                {
-                    headers: { "content-type": "application/strategic-merge-patch+json" },
-                }
-            );
         } else {
-            console.debug(`${name} ${kind} not present in the cluster. Installing v${newVersion}`);
-            return await coreK8sApi.createNamespacedSecret(namespace, yamlObject);
+            appendDryRunTag(dryRun, `${name} ${kind} not present in the cluster. Installing v${newVersion}`);
+            return await coreK8sApi.createNamespacedSecret(namespace, yamlObject, undefined, dryRun);
         }
     }
 
@@ -420,6 +465,7 @@ export class K8sInstaller {
      * @param {object} yamlObject
      * @param {boolean} cluster
      * @param {boolean} forceUpdate
+     * @param {string} dryRun
      */
     static async upsertTemplate(
         packageName: string,
@@ -428,7 +474,8 @@ export class K8sInstaller {
         group: string,
         yamlObject: GenericK8sSpecType,
         cluster: boolean,
-        forceUpdate: boolean
+        forceUpdate: boolean,
+        dryRun?: string,
     ) {
         const plural = `${kind.toLowerCase()}s`;
         let response: K8sApiResponse;
@@ -460,9 +507,11 @@ export class K8sInstaller {
 
             // Override the workflowTemplateRef clusterScope variable
             if (kind == constants.ARGO_CRON_WORKFLOW_KIND) {
-                yamlObject["spec"]["workflowSpec"]["workflowTemplateRef"]["clusterScope"] = true;
-                // cron workflows have no concept of clusterInstall
-                cluster = false;
+                if (yamlObject["spec"]["workflowSpec"]["workflowTemplateRef"]) {
+                    yamlObject["spec"]["workflowSpec"]["workflowTemplateRef"]["clusterScope"] = true;
+                    // cron workflows have no concept of clusterInstall
+                    cluster = false;
+                }
             } else {
                 const templates = yamlObject["spec"]["templates"];
                 if (templates) {
@@ -486,7 +535,8 @@ export class K8sInstaller {
             yamlObject,
             cluster,
             group,
-            forceUpdate
+            forceUpdate,
+            dryRun
         );
     }
 
@@ -501,14 +551,15 @@ export class K8sInstaller {
      * @param {boolean} forceUpdate
      * @returns
      */
-    static async handleUpsertWithTemplateResponse(
+    static handleUpsertWithTemplateResponse(
         response: K8sApiResponse,
         namespace: string,
         plural: string,
         yamlObject: GenericK8sSpecType,
         cluster: boolean,
         apiGroup: string,
-        forceUpdate: boolean
+        forceUpdate: boolean,
+        dryRun?: string,
     ) {
         const name = yamlObject.metadata.name;
         const items = response.body.items;
@@ -521,28 +572,30 @@ export class K8sInstaller {
                 name,
                 yamlObject.kind,
                 newVersion,
-                forceUpdate
+                forceUpdate,
+                dryRun
             );
 
             if (shouldUpdate) {
                 if (resource.updateStrategyIsRecreate()) {
-                    console.debug(`${msgPrefix} v${resource.version} will be deleted and replaced with v${newVersion}`);
-                    return await K8sInstaller.recreateCustomResource(
+                    appendDryRunTag(dryRun, `${msgPrefix} v${resource.version} will be deleted and replaced with v${newVersion}`);
+                    return K8sInstaller.recreateCustomResource(
                         name,
                         namespace,
                         plural,
                         yamlObject,
                         cluster,
-                        apiGroup
+                        apiGroup,
+                        dryRun
                     );
                 } else {
-                    console.debug(`${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`);
-                    return await K8sInstaller.patchCustomResource(name, namespace, plural, yamlObject, cluster, apiGroup);
+                    appendDryRunTag(dryRun, `${msgPrefix} v${resource.version} will be patch updated to v${newVersion}`);
+                    return K8sInstaller.patchCustomResource(name, namespace, plural, yamlObject, cluster, apiGroup, dryRun);
                 }
             }
         } else {
-            console.debug(`${name} ${yamlObject.kind} not present in the cluster. Installing v${newVersion}`);
-            return await K8sInstaller.createCustomResource(namespace, plural, yamlObject, cluster, apiGroup);
+            appendDryRunTag(dryRun, `${name} ${yamlObject.kind} not present in the cluster. Installing v${newVersion}`);
+            return K8sInstaller.createCustomResource(namespace, plural, yamlObject, cluster, apiGroup, dryRun);
         }
     }
 
@@ -553,6 +606,7 @@ export class K8sInstaller {
      * @param {Object} yamlObject
      * @param {boolean} cluster
      * @param {string} apiGroup
+     * @param {string} dryRun
      * @returns
      */
     static async createCustomResource(
@@ -560,14 +614,17 @@ export class K8sInstaller {
         plural: string,
         yamlObject: GenericK8sSpecType,
         cluster: boolean,
-        apiGroup: string
+        apiGroup: string,
+        dryRun?: string,
     ) {
         if (cluster) {
             return await customK8sApi.createClusterCustomObject(
                 apiGroup,
                 constants.ARGO_K8S_API_VERSION,
                 plural,
-                yamlObject
+                yamlObject,
+                undefined,
+                dryRun,
             );
         } else {
             return await customK8sApi.createNamespacedCustomObject(
@@ -575,7 +632,9 @@ export class K8sInstaller {
                 constants.ARGO_K8S_API_VERSION,
                 namespace,
                 plural,
-                yamlObject
+                yamlObject,
+                undefined,
+                dryRun,
             );
         }
     }
@@ -588,6 +647,7 @@ export class K8sInstaller {
      * @param {Object} yamlObject
      * @param {boolean} cluster
      * @param {string} apiGroup
+     * @param {string} dryRun
      * @returns
      */
     static async patchCustomResource(
@@ -596,7 +656,8 @@ export class K8sInstaller {
         plural: string,
         yamlObject: GenericK8sSpecType,
         cluster: boolean,
-        apiGroup: string
+        apiGroup: string,
+        dryRun?: string,
     ) {
         if (cluster) {
             return await customK8sApi.patchClusterCustomObject(
@@ -605,7 +666,7 @@ export class K8sInstaller {
                 plural,
                 name,
                 yamlObject,
-                undefined,
+                dryRun,
                 undefined,
                 undefined,
                 { headers: { "content-type": "application/merge-patch+json" } }
@@ -618,7 +679,7 @@ export class K8sInstaller {
                 plural,
                 name,
                 yamlObject,
-                undefined,
+                dryRun,
                 undefined,
                 undefined,
                 { headers: { "content-type": "application/merge-patch+json" } }
@@ -634,6 +695,7 @@ export class K8sInstaller {
      * @param {Object} yamlObject
      * @param {boolean} cluster
      * @param {string} apiGroup
+     * @param {string} dryRun
      * @returns {Promise<Object>} k8s response
      */
     static async recreateCustomResource(
@@ -642,20 +704,27 @@ export class K8sInstaller {
         plural: string,
         yamlObject: object,
         cluster: boolean,
-        apiGroup: string
+        apiGroup: string,
+        dryRun?: string,
     ): Promise<object> {
         if (cluster) {
             await customK8sApi.deleteClusterCustomObject(
                 constants.ARGO_K8S_API_GROUP,
                 constants.ARGO_K8S_API_VERSION,
                 plural,
-                name
+                name,
+                undefined,
+                undefined,
+                undefined,
+                dryRun
             );
             return await customK8sApi.createClusterCustomObject(
                 apiGroup,
                 constants.ARGO_K8S_API_VERSION,
                 plural,
-                yamlObject
+                yamlObject,
+                undefined,
+                dryRun,
             );
         } else {
             await customK8sApi.deleteNamespacedCustomObject(
@@ -663,14 +732,20 @@ export class K8sInstaller {
                 constants.ARGO_K8S_API_VERSION,
                 namespace,
                 plural,
-                name
+                name,
+                undefined,
+                undefined,
+                undefined,
+                dryRun
             );
             return await customK8sApi.createNamespacedCustomObject(
                 apiGroup,
                 constants.ARGO_K8S_API_VERSION,
                 namespace,
                 plural,
-                yamlObject
+                yamlObject,
+                undefined,
+                dryRun
             );
         }
     }

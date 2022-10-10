@@ -2,7 +2,7 @@ import { CoreV1Api, CustomObjectsApi, KubeConfig, loadYaml, V1ConfigMap, V1Secre
 import { blue, bright, lightCyan, red, yellow } from "ansicolor";
 import { readFile } from "node:fs/promises";
 import { constants } from "../constants.mjs";
-import { K8sApiResponse as K8sApiListResponse } from "../k8s.mjs";
+import { appendDryRunTag, K8sApiResponse as K8sApiListResponse } from "../k8s.mjs";
 import { getDirName } from "../utils.mjs";
 import { Arguments } from "./argument.mjs";
 import { PackageInfo } from "./info.mjs";
@@ -122,46 +122,17 @@ export class Package {
      * 3. Delete the config maps
      * @returns
      */
-    async delete(cluster: boolean, namespace: string) {
+    async delete(cluster: boolean, namespace: string, dryRun?: string) {
         for (const dependencyPackage of await this.dependencies(cluster)) {
-            console.log(`Deleting dependent package ${dependencyPackage.info.name}`);
-            await dependencyPackage.delete(cluster, namespace);
+            appendDryRunTag(dryRun, `Deleting dependent package ${dependencyPackage.info.name}`);
+            await dependencyPackage.delete(cluster, namespace, dryRun);
         }
 
-        console.log(`Deleting config maps for package ${this.metadata.name}`);
-        await this.deleteConfigMaps(namespace);
-
-        console.log(`Deleting secrets for package ${this.metadata.name}`);
-        await this.deleteSecrets(namespace);
-
-        console.log(`Deleting pipelines for package ${this.metadata.name}`);
-        await this.deletePipelines(namespace);
-
-        console.log(`Deleting cronworkflows for package ${this.metadata.name}`);
-        await this.deleteCronWorkflows(namespace);
-
-        console.log(`Deleting templates for package ${this.metadata.name}`);
-        let kind = constants.ARGO_WORKFLOW_TEMPLATES_KIND;
-        let plural = `${kind.toLowerCase()}s`;
-
-        if (cluster) {
-            kind = constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND;
-            plural = `${kind.toLowerCase()}s`;
-            await customK8sApi.deleteClusterCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                plural,
-                this.metadata.name
-            );
-        } else {
-            await customK8sApi.deleteNamespacedCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                this.metadata.namespace,
-                plural,
-                this.metadata.name
-            );
-        }
+        await this.deleteConfigMaps(namespace, dryRun);
+        await this.deleteSecrets(namespace, dryRun);
+        await this.deletePipelines(namespace, dryRun);
+        await this.deleteCronWorkflows(namespace, dryRun);
+        await this.deleteWorkflowTemplates(namespace, cluster, dryRun);
     }
 
     /**
@@ -238,12 +209,14 @@ export class Package {
      * Deletes all configmaps associated with the package
      * @returns
      */
-    async deleteConfigMaps(namespace: any) {
+    async deleteConfigMaps(namespace: any, dryRun?: string) {
+        appendDryRunTag(dryRun, `Deleting configmaps for package ${this.metadata.name}`);
+
         const configMaps = await this.configMaps(namespace);
         for (const configMap of configMaps) {
             const metadata = configMap.metadata;
             if (metadata?.name && metadata.namespace) {
-                await coreK8sApi.deleteNamespacedConfigMap(metadata.name, metadata.namespace);
+                await coreK8sApi.deleteNamespacedConfigMap(metadata.name, metadata.namespace, undefined, dryRun);
             } else {
                 console.error(`Cannot proceed with ${metadata}.`);
             }
@@ -270,12 +243,14 @@ export class Package {
      * Deletes all secrets associated with the package
      * @returns
      */
-    async deleteSecrets(namespace: any) {
+    async deleteSecrets(namespace: any, dryRun?: string) {
+        appendDryRunTag(dryRun, `Deleting secrets for package ${this.metadata.name}`);
+
         const secrets = await this.secrets(namespace);
         for (const secret of secrets) {
             const metadata = secret.metadata;
             if (metadata?.name && metadata.namespace) {
-                await coreK8sApi.deleteNamespacedSecret(metadata.name, metadata.namespace);
+                await coreK8sApi.deleteNamespacedSecret(metadata.name, metadata.namespace, undefined, dryRun);
             }
             return;
         }
@@ -305,7 +280,9 @@ export class Package {
      * Deletes all pipelines associated with the package
      * @returns
      */
-    async deletePipelines(namespace: any) {
+    async deletePipelines(namespace: any, dryRun?: string) {
+        appendDryRunTag(dryRun, `Deleting pipelines for package ${this.metadata.name}`);
+
         const plural = `${constants.ARGO_DATAFLOW_KIND.toLowerCase()}s`;
         for (const pipeline of await this.pipelines(namespace)) {
             const metadata = pipeline.metadata;
@@ -314,7 +291,11 @@ export class Package {
                 constants.ARGO_K8S_API_VERSION,
                 metadata.namespace,
                 plural,
-                metadata.name
+                metadata.name,
+                undefined,
+                undefined,
+                undefined,
+                dryRun,
             );
         }
     }
@@ -343,7 +324,9 @@ export class Package {
      * Deletes cronworkflows associated with the package
      * @returns
      */
-    async deleteCronWorkflows(namespace: any) {
+    async deleteCronWorkflows(namespace: any, dryRun?: string) {
+        appendDryRunTag(dryRun, `Deleting cronworkflows for package ${this.metadata.name}`);
+
         const plural = `${constants.ARGO_CRON_WORKFLOW_KIND.toLowerCase()}s`;
         for (const cronWorkflow of await this.cronWorkflows(namespace)) {
             const metadata = cronWorkflow.metadata;
@@ -352,7 +335,62 @@ export class Package {
                 constants.ARGO_K8S_API_VERSION,
                 metadata.namespace,
                 plural,
-                metadata.name
+                metadata.name,
+                undefined,
+                undefined,
+                dryRun,
+            );
+        }
+    }
+
+    /**
+     * Returns all cron workflows associated with the package
+     * @returns
+     */
+    async workflowTemplates(namespace: string, cluster: boolean) {
+        const plural = `${constants.ARGO_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
+        const response = await customK8sApi.listNamespacedCustomObject(
+            constants.ARGO_K8S_API_GROUP,
+            constants.ARGO_K8S_API_VERSION,
+            namespace,
+            plural,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            this.info.getPackageLabel()
+        );
+        return response.body["items"];
+    }
+
+    /**
+     * Deletes workflow templates associated with the package
+     * @returns
+     */
+    async deleteWorkflowTemplates(namespace: any, cluster: boolean, dryRun?: string) {
+        appendDryRunTag(dryRun, `Deleting templates for package ${this.metadata.name}`);
+
+        let plural = `${constants.ARGO_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
+        if (cluster) {
+            await customK8sApi.deleteClusterCustomObject(
+                constants.ARGO_K8S_API_GROUP,
+                constants.ARGO_K8S_API_VERSION,
+                plural,
+                this.metadata.name,
+                undefined,
+                undefined,
+                dryRun,
+            );
+        } else {
+            await customK8sApi.deleteNamespacedCustomObject(
+                constants.ARGO_K8S_API_GROUP,
+                constants.ARGO_K8S_API_VERSION,
+                this.metadata.namespace,
+                plural,
+                this.metadata.name,
+                undefined,
+                undefined,
+                dryRun,
             );
         }
     }

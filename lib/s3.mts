@@ -100,8 +100,6 @@ export class S3 {
             let dirs = await walk(`${dirPath}/static`);
             dirs = dirs.filter((dir) => !dir.endsWith(".md"));
             await Promise.all(dirs.map((dir) => this.uploadFile(dir)));
-        } else {
-            console.log(yellow(`No "static" dir under ${dirPath}.`));
         }
     }
 }

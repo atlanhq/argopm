@@ -1,15 +1,17 @@
 #!/usr/bin/env -S npx ts-node --esm
-import { bright, cyan, dim, green, strip, yellow } from "ansicolor";
+import { bright, cyan, dim, green, yellow } from "ansicolor";
 import asTable from "as-table";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { initHelp, installHelp } from "../lib/help.mjs";
+// import yargsInteractive from "yargs-interactive";
+import { constants } from "../lib/constants.mjs";
+import { initHelp } from "../lib/help.mjs";
 import { run, uninstall } from "../lib/index.mjs";
 import { init } from "../lib/init.mjs";
 import { install, installGlobal } from "../lib/install.mjs";
 import { K8sInstallerOptionsType } from "../lib/k8s.mjs";
 import { Package } from "../lib/models/package.mjs";
-import { constants } from "../lib/constants.mjs";
+import { applyColor } from "../lib/utils.mjs";
 
 asTable.configure({
     title: (x) => bright(x),
@@ -18,9 +20,6 @@ asTable.configure({
 });
 
 const yarg = yargs(hideBin(process.argv));
-
-
-const applyColor = (color: boolean, log: any) => color ? log : strip(log);
 
 yarg
     .option("namespace", {
@@ -61,8 +60,8 @@ yarg
                 .option("dry-run", {
                     alias: "d",
                     type: "boolean",
-                    description: "Perform an install dry-run and display to-be-installed K8s resources",
-                    default: true,
+                    description: "Perform an install dry-run and display to-be-installed Kubernetes resources",
+                    default: false,
                 })
                 .option("force", {
                     alias: "f",
@@ -127,7 +126,6 @@ yarg
                     demandOption: false,
                 }),
         handler: async (argv) => {
-            let packageName: string;
             const {
                 global,
                 namespace,
@@ -136,6 +134,8 @@ yarg
                 excludeDependencies,
                 save,
                 force,
+                dryRun,
+                color,
                 cronString,
                 timeZone,
                 workflowTemplates,
@@ -154,29 +154,31 @@ yarg
             };
 
             if (global) {
-                packageName = await installGlobal(
+                await installGlobal(
                     argv.package as string, // package is a JS reserved word
                     registry,
                     namespace,
                     cluster,
                     excludeDependencies,
+                    dryRun,
+                    color,
                     options,
                     installParts
                 );
             } else {
-                packageName = await install(
+                await install(
                     argv.package as string,
                     registry,
                     namespace,
                     save,
                     cluster,
                     excludeDependencies,
+                    dryRun,
+                    color,
                     options,
                     installParts
                 );
             }
-
-            console.log(applyColor(argv.color, installHelp.replace(/NAME/g, packageName)));
         },
     })
     .command({
@@ -227,8 +229,14 @@ yarg
         command: "uninstall <package>",
         aliases: ["u", "r"],
         describe: "Uninstall a package. Uninstalls all dependencies associated with the package.",
+        builder: (yargs) => yargs.option("dry-run", {
+            alias: "d",
+            type: "boolean",
+            description: "Perform an uninstall dry-run and display to-be-uninstalled Kubernetes resources",
+            default: false,
+        }),
         handler: async (argv) => {
-            await uninstall(argv.namespace as string, argv.package as string, argv.cluster as boolean);
+            await uninstall(argv.namespace as string, argv.package as string, argv.cluster as boolean, argv.dryRun);
             console.log(applyColor(argv.color as boolean, green(`Successfully deleted package ${argv.package}`)));
         },
     })
@@ -236,14 +244,14 @@ yarg
         command: "init [package_name]",
         describe: "Initializes an Argo package inside the current working directory",
         builder: (yargs) =>
-            yargs.option("force", {
-                alias: "f",
+            yargs.option("create-namespace", {
                 type: "boolean",
-                description: "Force the command",
+                description: "Create the specified namespace if it does not exist yet",
                 default: false,
             }),
         handler: async (argv) => {
-            const packageName = await init(argv.force);
+            const { namespace, createNamespace, registry, cluster } = argv;
+            const packageName = await init(namespace as string, createNamespace, registry as string, cluster as boolean);
             console.log(applyColor(argv.color as boolean, initHelp.replace(/NAME/g, packageName)));
         },
     })

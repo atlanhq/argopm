@@ -6,10 +6,11 @@ import { generateArguments } from "./utils.mjs";
  * @param {string} namespace
  * @param {string} name
  * @param {string} cluster
+ * @param {boolean} dryRun
  */
-export async function uninstall(namespace: string, name: string, cluster: boolean) {
+export async function uninstall(namespace: string, name: string, cluster: boolean, dryRun: boolean) {
     const argoPackage = await Package.info(namespace, name, cluster);
-    return argoPackage.delete(cluster, namespace);
+    return argoPackage.delete(cluster, namespace, dryRun ? "All" : undefined);
 }
 
 /**

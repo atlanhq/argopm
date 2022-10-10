@@ -69,8 +69,10 @@ describe("argopm non-init", () => {
 
     afterAll(async () => {
         try {
-            await uninstall(NAMESPACE, packageName.name, false);
-        } catch { }
+            await uninstall(NAMESPACE, packageName.name, false, false);
+        } catch (err) {
+            console.log(err);
+        }
     });
 
     describe("fresh-install all", () => {
@@ -418,6 +420,49 @@ Cron Workflows:
         });
     });
 
+    describe("install specific resource/s", () => {
+
+        it("should install configmaps only successfully", async () => {
+            const newName = "argopm-mock-package-delete-me-configmap-2";
+            const newPath = "configmaps/another-custom-cm.yaml";
+            shell.cp("-R", `${MOCK_PACKAGE_DIR}/configmaps/default.yaml`, `${TMP_DIR}/${newPath}`);
+            shell.sed("-i", /argopm-mock-package-delete-me-configmap/g, newName, `${TMP_DIR}/${newPath}`);
+
+            await yarg.parse(`install .  -x -n ${NAMESPACE} --cm ${newName}`);
+
+            setTimeout(async () => {
+                const object = await getResourceFromYaml<V1ConfigMap>(newPath);
+                const persisted = await coreK8sApi.readNamespacedConfigMap(object.metadata?.name || "", NAMESPACE);
+                expect(persisted.response.statusCode).toEqual(200);
+                expect((persisted.body.metadata?.labels as any)[constants.ARGOPM_LIBRARY_VERSION_LABEL]).toEqual(packageVersion);
+
+                expect(consoleDebugSpy).toBeCalledWith(
+                    `${object.metadata?.name} ${constants.CONFIGMAP_KIND} not present in the cluster. Installing v${packageVersion}`
+                );
+            }, 2000)
+        });
+
+        it("should install cluster workflow templates only successfully", async () => {
+            const newName = "argopm-mock-package-delete-me-cluter-template";
+            const newPath = "configmaps/another-custom-template.yaml";
+            shell.cp("-R", `${MOCK_PACKAGE_DIR}/templates/default.yaml`, `${TMP_DIR}/${newPath}`);
+            shell.sed("-i", /argopm-mock-package-delete-me-template/g, newName, `${TMP_DIR}/${newPath}`);
+
+            await yarg.parse(`install .  -x -n ${NAMESPACE} --cluster --cm ${newName}`);
+
+            setTimeout(async () => {
+                const object = await getResourceFromYaml<V1ConfigMap>(newPath);
+                const persisted = await coreK8sApi.readNamespacedConfigMap(object.metadata?.name || "", NAMESPACE);
+                expect(persisted.response.statusCode).toEqual(200);
+                expect((persisted.body.metadata?.labels as any)[constants.ARGOPM_LIBRARY_VERSION_LABEL]).toEqual(packageVersion);
+
+                expect(consoleDebugSpy).toBeCalledWith(
+                    `${object.metadata?.name} ${constants.CONFIGMAP_KIND} not present in the cluster. Installing v${packageVersion}`
+                );
+            }, 2000)
+        });
+    });
+
     describe("run", () => {
         it("should run a worflow successfully", async () => {
             setTimeout(async () => {
@@ -481,15 +526,15 @@ smtp  0.1.20   smtp@0.1.20  https://packages.atlan.com`;
                 expect(consoleSpy).toBeCalledWith(`Deleting pipelines for package ${packageToAdd}`);
                 expect(consoleSpy).toBeCalledWith(`Successfully deleted package ${packageToAdd}`);
 
-                // const persisted = await customK8sApi.getNamespacedCustomObject(
-                //     constants.ARGO_WORKFLOW_TEMPLATES_KIND,
-                //     constants.ARGO_K8S_API_VERSION,
-                //     NAMESPACE,
-                //     `${constants.ARGO_CRON_WORKFLOW_KIND.toLowerCase()}s`,
-                //     packageToAdd,
-                // ) as { response: IncomingMessage, body: GenericK8sSpecType };
+                const persisted = await customK8sApi.getNamespacedCustomObject(
+                    constants.ARGO_K8S_API_GROUP,
+                    constants.ARGO_K8S_API_VERSION,
+                    NAMESPACE,
+                    constants.ARGO_WORKFLOW_TEMPLATES_PLURAL,
+                    packageToAdd,
+                ) as { response: IncomingMessage, body: GenericK8sSpecType };
 
-                // expect(persisted.response.statusCode).toEqual(404);
+                expect(persisted.response.statusCode).toEqual(404);
             }, 2000);
         });
     });

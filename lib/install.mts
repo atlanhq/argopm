@@ -1,6 +1,6 @@
-import { K8sInstaller, K8sInstallerOptionsType } from "./k8s.mjs";
+import { appendDryRunTag, K8sInstaller, K8sInstallerOptionsType } from "./k8s.mjs";
 import { S3 } from "./s3.mjs";
-import { listDirs, deleteDir } from "./utils.mjs";
+import { listDirs, deleteDir, applyColor } from "./utils.mjs";
 import { readFileSync, existsSync } from "fs";
 import { DashboardInstaller } from "./dashboard.mjs";
 import { constants } from "./constants.mjs";
@@ -10,6 +10,7 @@ import shell from "shelljs";
 import npa from "npm-package-arg";
 import process from "process";
 import { red, yellow } from "ansicolor";
+import { installHelp } from "./help.mjs";
 
 /**
  * Downloads the given package
@@ -44,6 +45,8 @@ export const installGlobal = async function (
     namespace: string,
     cluster: boolean,
     excludeDependencies: boolean,
+    dryRun: boolean,
+    color: boolean,
     options: K8sInstallerOptionsType,
     installParts: { [k: string]: string[] }
 ) {
@@ -56,6 +59,8 @@ export const installGlobal = async function (
         false,
         cluster,
         excludeDependencies,
+        dryRun,
+        color,
         options,
         installParts,
         dirPath
@@ -92,6 +97,8 @@ export const install = async function (
     save: boolean,
     cluster: boolean,
     excludeDependencies: boolean,
+    dryRun: boolean,
+    color: boolean,
     options: K8sInstallerOptionsType,
     installParts: { [k: string]: string[] },
     dirPath: string = process.cwd()
@@ -108,15 +115,16 @@ export const install = async function (
         );
 
         // Install Template on Argo
-        const k8sInstaller = new K8sInstaller(_dirPath, namespace, parentPackageName, registry, options);
+        const k8sInstaller = new K8sInstaller(_dirPath, namespace, parentPackageName, registry, dryRun, installParts, options);
 
         // Install Dashboards
         const dashboardInstaller = new DashboardInstaller(k8sInstaller.package, _dirPath);
 
-        await k8sInstaller.install(cluster, installParts);
+        const k8sInstalled = await k8sInstaller.install(cluster,);
         await dashboardInstaller.install();
         await s3Uploader.initialize();
-        return await s3Uploader.uploadStaticFiles(_dirPath);
+        await s3Uploader.uploadStaticFiles(_dirPath);
+        return k8sInstalled;
     };
 
     const packageJSONFilePath = `${dirPath}/package.json`;
@@ -130,6 +138,7 @@ export const install = async function (
     npmInstall(dirPath, packageName, registry, save);
 
     let dirs: string[] = [];
+    let toInstall = [];
 
     if (existsSync(nodeModulesPath)) {
         if (packageName !== ".") {
@@ -150,22 +159,29 @@ export const install = async function (
         dirs = dirs.filter((dir) => dir !== undefined);
     }
 
-    dirs.forEach(async (dir) => {
+    for (const dir of dirs) {
         if (dir && dir?.split("/").slice(-1)[0].startsWith("@")) {
             const innerDirs = await listDirs(dir);
             innerDirs.forEach(async (innerDir) => {
-                await processInstallers(innerDir);
+                toInstall.push(processInstallers(innerDir));
             });
         } else {
-            await processInstallers(dir);
+            toInstall.push(processInstallers(dir));
         }
-    });
+    }
 
     if (packageName === ".") {
         parentPackageName = packageNameFromPath(`${dirPath}`);
-        await processInstallers(dirPath);
+        toInstall.push(processInstallers(dirPath));
     }
 
+    const k8sInstalled = await Promise.all(toInstall).then(results => results.reduce((prev, curr) => prev + curr));
+
     const parsedPackage = npa(parentPackageName);
-    return parsedPackage.name;
+
+    appendDryRunTag(dryRun, `Installed ${k8sInstalled} Kubernetes resources.`);
+
+    if (k8sInstalled && !dryRun) {
+        console.log(applyColor(color, installHelp.replace(/NAME/g, parsedPackage.name)));
+    }
 };

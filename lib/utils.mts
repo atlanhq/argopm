@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import { loadYaml } from "@kubernetes/client-node";
 import { readFileSync } from "fs";
 import { readFile } from "fs/promises";
+import { strip } from "ansicolor";
 
 const rimrafPromise = promisify(rimraf);
 
@@ -97,3 +98,6 @@ export function generateArguments() {
 export const getResourceFromYaml = async <T,>(path: string) => {
     return loadYaml<T>((await readFile(path)).toString());
 };
+
+
+export const applyColor = (color: boolean, log: any) => color ? log : strip(log);
