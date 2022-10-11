@@ -91,7 +91,7 @@ export function generateArguments() {
 
 /**
  * Parses the YAML file and returns and object of it.
- * 
+ *
  * @param path The YAML file path
  * @returns object with the YAML content
  */
@@ -99,5 +99,12 @@ export const getResourceFromYaml = async <T,>(path: string) => {
     return loadYaml<T>((await readFile(path)).toString());
 };
 
-
-export const applyColor = (color: boolean, log: any) => color ? log : strip(log);
+/**
+ * Optionally turn-off CLI colors by using --no-color. Used for unit testing as the spyOn
+ * mock functions returns the raw ansicolor-wrapped strings
+ * 
+ * @param color 
+ * @param log 
+ * @returns 
+ */
+export const applyColor = (color: boolean, log: any) => (color ? log : strip(log));

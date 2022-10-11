@@ -107,31 +107,39 @@ export const install = async function (
     const nodeModulesPath = `${dirPath}/node_modules`;
 
     const processInstallers = async (_dirPath: string) => {
-        // Upload Static Files
-        const s3Uploader = new S3(
-            constants.ATLAN_DEFAULTS_CONFIGMAP_NAME,
-            constants.ATLAN_DEFAULTS_CONFIGMAP_NAMESPACE,
-            npa(packageNameFromPath(_dirPath))
-        );
-
         // Install Template on Argo
-        const k8sInstaller = new K8sInstaller(_dirPath, namespace, parentPackageName, registry, dryRun, installParts, options);
+        const k8sInstaller = new K8sInstaller(
+            _dirPath,
+            namespace,
+            parentPackageName,
+            registry,
+            dryRun,
+            installParts,
+            options
+        );
 
         // Install Dashboards
         const dashboardInstaller = new DashboardInstaller(k8sInstaller.package, _dirPath);
 
-        const k8sInstalled = await k8sInstaller.install(cluster,);
+        const k8sInstalled = await k8sInstaller.install(cluster);
         await dashboardInstaller.install();
-        await s3Uploader.initialize();
-        await s3Uploader.uploadStaticFiles(_dirPath);
+
+        if (existsSync(`${_dirPath}/static`)) {
+            // Upload Static Files
+            const s3Uploader = new S3(
+                constants.ATLAN_DEFAULTS_CONFIGMAP_NAME,
+                constants.ATLAN_DEFAULTS_CONFIGMAP_NAMESPACE,
+                npa(packageNameFromPath(_dirPath))
+            );
+            await s3Uploader.initialize();
+            await s3Uploader.uploadStaticFiles(_dirPath);
+        }
         return k8sInstalled;
     };
 
     const packageJSONFilePath = `${dirPath}/package.json`;
     if (packageName === "." && save && !existsSync(packageJSONFilePath)) {
-        console.error(
-            red(`package.json is not present in the current dir ${dirPath}. Try with --no-save argument`)
-        );
+        console.error(red(`package.json is not present in the current dir ${dirPath}. Try with --no-save argument`));
         process.exit(1);
     }
 
@@ -175,11 +183,11 @@ export const install = async function (
         toInstall.push(processInstallers(dirPath));
     }
 
-    const k8sInstalled = await Promise.all(toInstall).then(results => results.reduce((prev, curr) => prev + curr));
-
+    const results = await Promise.all(toInstall);
+    const k8sInstalled = results.reduce((prev, curr) => prev + curr, 0);
     const parsedPackage = npa(parentPackageName);
 
-    appendDryRunTag(dryRun, `Installed ${k8sInstalled} Kubernetes resources.`);
+    appendDryRunTag(dryRun, `Installed ${k8sInstalled} Kubernetes resource${k8sInstalled !== 1 && 's'}.`);
 
     if (k8sInstalled && !dryRun) {
         console.log(applyColor(color, installHelp.replace(/NAME/g, parsedPackage.name)));

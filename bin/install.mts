@@ -229,12 +229,13 @@ yarg
         command: "uninstall <package>",
         aliases: ["u", "r"],
         describe: "Uninstall a package. Uninstalls all dependencies associated with the package.",
-        builder: (yargs) => yargs.option("dry-run", {
-            alias: "d",
-            type: "boolean",
-            description: "Perform an uninstall dry-run and display to-be-uninstalled Kubernetes resources",
-            default: false,
-        }),
+        builder: (yargs) =>
+            yargs.option("dry-run", {
+                alias: "d",
+                type: "boolean",
+                description: "Perform an uninstall dry-run and display to-be-uninstalled Kubernetes resources",
+                default: false,
+            }),
         handler: async (argv) => {
             await uninstall(argv.namespace as string, argv.package as string, argv.cluster as boolean, argv.dryRun);
             console.log(applyColor(argv.color as boolean, green(`Successfully deleted package ${argv.package}`)));
@@ -251,7 +252,12 @@ yarg
             }),
         handler: async (argv) => {
             const { namespace, createNamespace, registry, cluster } = argv;
-            const packageName = await init(namespace as string, createNamespace, registry as string, cluster as boolean);
+            const packageName = await init(
+                namespace as string,
+                createNamespace,
+                registry as string,
+                cluster as boolean
+            );
             console.log(applyColor(argv.color as boolean, initHelp.replace(/NAME/g, packageName)));
         },
     })
@@ -261,10 +267,11 @@ yarg
         describe: "List all the packages installed in the namespace",
         handler: async (argv) => {
             const argoPackages = await Package.list(argv.namespace as string, argv.cluster as boolean);
-            if (argoPackages.length === 0) {
+            if (argoPackages.length > 0) {
+                console.log(applyColor(argv.color as boolean, asTable(argoPackages)));
+            } else {
                 console.log(applyColor(argv.color as boolean, yellow("No packages found")));
             }
-            console.log(applyColor(argv.color as boolean, asTable(argoPackages.map((p) => p.info))));
         },
     })
     // .demandCommand()

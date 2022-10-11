@@ -2,7 +2,7 @@ import { CoreV1Api, CustomObjectsApi, KubeConfig, loadYaml, V1ConfigMap, V1Secre
 import { blue, bright, lightCyan, red, yellow } from "ansicolor";
 import { readFile } from "node:fs/promises";
 import { constants } from "../constants.mjs";
-import { appendDryRunTag, K8sApiResponse as K8sApiListResponse } from "../k8s.mjs";
+import { appendDryRunTag, GenericK8sSpecType, K8sApiResponse as K8sApiListResponse } from "../k8s.mjs";
 import { getDirName } from "../utils.mjs";
 import { Arguments } from "./argument.mjs";
 import { PackageInfo } from "./info.mjs";
@@ -27,11 +27,11 @@ export class Package {
      * Create an Argo Package object
      * @param {Object} k8sYaml
      */
-    constructor(k8sYaml: { metadata: any; spec: any }) {
+    constructor(k8sYaml: GenericK8sSpecType) {
         this.metadata = k8sYaml.metadata;
         this.spec = k8sYaml.spec;
         this.info = new PackageInfo(this.metadata.labels);
-        this.isExecutable = !!this.spec.entrypoint;
+        this.isExecutable = this.spec.entrypoint !== undefined;
         this.arguments = new Arguments(this.spec.arguments);
         this.templates = Template.generate(this.spec.templates);
     }
@@ -53,21 +53,21 @@ export class Package {
         });
         info += templatesInfo;
 
-        const pipelines = await this.pipelines(namespace);
+        const pipelines = await Package.pipelines(namespace, this.info.name);
         let pipelinesInfo = blue(bright("\nPipelines: \n"));
         pipelines.forEach((pipeline: { metadata: { name: string | number } }) => {
             pipelinesInfo += `- ${yellow(pipeline.metadata.name)}\n`;
         });
         info += pipelinesInfo;
 
-        const configMaps = await this.configMaps(namespace);
+        const configMaps = await Package.configMaps(namespace, this.info.name);
         let configMapInfo = blue(bright("\nConfig Maps: \n"));
         configMaps.forEach((configMap) => {
             configMapInfo += `- ${yellow(configMap.metadata?.name)}\n`;
         });
         info += configMapInfo;
 
-        const secrets = await this.secrets(namespace);
+        const secrets = await Package.secrets(namespace, this.info.name);
         if (secrets.length != 0) {
             let secretInfo = blue(bright("\nSecrets: \n"));
             secrets.forEach((secret) => {
@@ -76,7 +76,7 @@ export class Package {
             info += secretInfo;
         }
 
-        const cronWorkflows = await this.cronWorkflows(namespace);
+        const cronWorkflows = await Package.cronWorkflows(namespace, this.info.name);
         let cronWorkflowInfo = blue(bright("\nCron Workflows: \n"));
         cronWorkflows.forEach(
             (cronWorkflow: { spec: { schedule: any; timezone: any }; metadata: { name: string | number } }) => {
@@ -108,7 +108,8 @@ export class Package {
         const chosenTemplate = this.templates.find((template) => template.name === name);
 
         if (!chosenTemplate) {
-            throw new Error("Template not found in package");
+            console.error(red("Template not found in package"));
+            process.exit(1);
         }
 
         return chosenTemplate;
@@ -141,46 +142,21 @@ export class Package {
      * @returns
      */
     async dependencies(cluster: boolean) {
-        let kind = constants.ARGO_WORKFLOW_TEMPLATES_KIND;
-        let plural = `${kind.toLowerCase()}s`;
-        let response: K8sApiListResponse;
-
-        if (cluster) {
-            kind = constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND;
-            plural = `${kind.toLowerCase()}s`;
-            response = await customK8sApi.listClusterCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                plural,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                this.info.getDependencyLabel()
-            );
-        } else {
-            response = await customK8sApi.listNamespacedCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                this.metadata.namespace,
-                plural,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                this.info.getDependencyLabel()
-            );
-        }
-        return this.getDependentPackagesFromListResponse(response);
+        const result = await Package.workflowTemplates(
+            this.metadata.namespace,
+            cluster,
+            this.info.getDependencyLabel()
+        );
+        return this.getDependentPackagesFromListResponse(result);
     }
 
     /**
      * Get all dependencies
      * @returns
      */
-    getDependentPackagesFromListResponse(response: K8sApiListResponse) {
+    getDependentPackagesFromListResponse(items: any) {
         const packages: Package[] = [];
-        response.body.items.forEach((template: any) => {
+        items.forEach((template: any) => {
             const argoPackage = new Package(template);
             if (argoPackage.info.name !== this.info.name) {
                 packages.push(argoPackage);
@@ -193,14 +169,14 @@ export class Package {
      * Returns all config maps associated with the package
      * @returns
      */
-    async configMaps(namespace: string): Promise<V1ConfigMap[]> {
+    static async configMaps(namespace: string, labelSelector: string): Promise<V1ConfigMap[]> {
         const response = await coreK8sApi.listNamespacedConfigMap(
             namespace,
             undefined,
             undefined,
             undefined,
             undefined,
-            this.info.getPackageLabel()
+            labelSelector
         );
         return response.body.items;
     }
@@ -212,29 +188,33 @@ export class Package {
     async deleteConfigMaps(namespace: any, dryRun?: string) {
         appendDryRunTag(dryRun, `Deleting configmaps for package ${this.metadata.name}`);
 
-        const configMaps = await this.configMaps(namespace);
-        for (const configMap of configMaps) {
-            const metadata = configMap.metadata;
-            if (metadata?.name && metadata.namespace) {
-                await coreK8sApi.deleteNamespacedConfigMap(metadata.name, metadata.namespace, undefined, dryRun);
-            } else {
-                console.error(`Cannot proceed with ${metadata}.`);
-            }
+        const toDelete = [];
+        for (const configMap of await Package.configMaps(namespace, PackageInfo.getPackageLabel(this.info.name))) {
+            toDelete.push(
+                coreK8sApi.deleteNamespacedConfigMap(
+                    configMap.metadata.name,
+                    configMap.metadata.namespace,
+                    undefined,
+                    dryRun
+                )
+            );
         }
+
+        return await Promise.all(toDelete);
     }
 
     /**
      * Returns all secrets associated with the package
      * @returns
      */
-    async secrets(namespace: string): Promise<V1Secret[]> {
+    static async secrets(namespace: string, labelSelector: string): Promise<V1Secret[]> {
         const response = await coreK8sApi.listNamespacedSecret(
             namespace,
             undefined,
             undefined,
             undefined,
             undefined,
-            this.info.getPackageLabel()
+            labelSelector
         );
         return response.body.items;
     }
@@ -246,32 +226,32 @@ export class Package {
     async deleteSecrets(namespace: any, dryRun?: string) {
         appendDryRunTag(dryRun, `Deleting secrets for package ${this.metadata.name}`);
 
-        const secrets = await this.secrets(namespace);
+        const toDelete = [];
+        const secrets = await Package.secrets(namespace, PackageInfo.getPackageLabel(this.info.name));
         for (const secret of secrets) {
-            const metadata = secret.metadata;
-            if (metadata?.name && metadata.namespace) {
-                await coreK8sApi.deleteNamespacedSecret(metadata.name, metadata.namespace, undefined, dryRun);
-            }
-            return;
+            toDelete.push(
+                coreK8sApi.deleteNamespacedSecret(secret.metadata.name, secret.metadata.namespace, undefined, dryRun)
+            );
         }
+
+        return await Promise.all(toDelete);
     }
 
     /**
      * Returns all piplines associated with the package
      * @returns
      */
-    async pipelines(namespace: string) {
-        const plural = `${constants.ARGO_DATAFLOW_KIND.toLowerCase()}s`;
+    static async pipelines(namespace: string, labelSelector: string) {
         const response = await customK8sApi.listNamespacedCustomObject(
             constants.ARGO_DATAFLOW_K8S_API_GROUP,
             constants.ARGO_K8S_API_VERSION,
             namespace,
-            plural,
+            constants.ARGO_PIPELINES_PLURAL,
             undefined,
             undefined,
             undefined,
             undefined,
-            this.info.getPackageLabel()
+            labelSelector
         );
         return response.body["items"];
     }
@@ -283,39 +263,40 @@ export class Package {
     async deletePipelines(namespace: any, dryRun?: string) {
         appendDryRunTag(dryRun, `Deleting pipelines for package ${this.metadata.name}`);
 
-        const plural = `${constants.ARGO_DATAFLOW_KIND.toLowerCase()}s`;
-        for (const pipeline of await this.pipelines(namespace)) {
-            const metadata = pipeline.metadata;
-            await customK8sApi.deleteNamespacedCustomObject(
-                constants.ARGO_DATAFLOW_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                metadata.namespace,
-                plural,
-                metadata.name,
-                undefined,
-                undefined,
-                undefined,
-                dryRun,
+        const toDelete = [];
+        for (const pipeline of await Package.pipelines(namespace, PackageInfo.getPackageLabel(this.info.name))) {
+            toDelete.push(
+                customK8sApi.deleteNamespacedCustomObject(
+                    constants.ARGO_DATAFLOW_K8S_API_GROUP,
+                    constants.ARGO_K8S_API_VERSION,
+                    pipeline.metadata.namespace,
+                    constants.ARGO_PIPELINES_PLURAL,
+                    pipeline.metadata.name,
+                    undefined,
+                    undefined,
+                    undefined,
+                    dryRun
+                )
             );
         }
+        return await Promise.all(toDelete);
     }
 
     /**
      * Returns all cron workflows associated with the package
      * @returns
      */
-    async cronWorkflows(namespace: string) {
-        const plural = `${constants.ARGO_CRON_WORKFLOW_KIND.toLowerCase()}s`;
+    static async cronWorkflows(namespace: string, labelSelector: string) {
         const response = await customK8sApi.listNamespacedCustomObject(
             constants.ARGO_K8S_API_GROUP,
             constants.ARGO_K8S_API_VERSION,
             namespace,
-            plural,
+            constants.ARGO_CRON_WORKFLOW_PLURAL,
             undefined,
             undefined,
             undefined,
             undefined,
-            this.info.getPackageLabel()
+            labelSelector
         );
         return response.body["items"];
     }
@@ -327,72 +308,101 @@ export class Package {
     async deleteCronWorkflows(namespace: any, dryRun?: string) {
         appendDryRunTag(dryRun, `Deleting cronworkflows for package ${this.metadata.name}`);
 
-        const plural = `${constants.ARGO_CRON_WORKFLOW_KIND.toLowerCase()}s`;
-        for (const cronWorkflow of await this.cronWorkflows(namespace)) {
-            const metadata = cronWorkflow.metadata;
-            await customK8sApi.deleteNamespacedCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                metadata.namespace,
-                plural,
-                metadata.name,
-                undefined,
-                undefined,
-                dryRun,
+        const toDelete = [];
+        for (const cronWorkflow of await Package.cronWorkflows(
+            namespace,
+            PackageInfo.getPackageLabel(this.info.name)
+        )) {
+            toDelete.push(
+                customK8sApi.deleteNamespacedCustomObject(
+                    constants.ARGO_K8S_API_GROUP,
+                    constants.ARGO_K8S_API_VERSION,
+                    cronWorkflow.metadata.namespace,
+                    constants.ARGO_CRON_WORKFLOW_PLURAL,
+                    cronWorkflow.metadata.name,
+                    undefined,
+                    undefined,
+                    dryRun
+                )
             );
         }
+        return await Promise.all(toDelete);
     }
 
     /**
      * Returns all cron workflows associated with the package
      * @returns
      */
-    async workflowTemplates(namespace: string, cluster: boolean) {
-        const plural = `${constants.ARGO_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
-        const response = await customK8sApi.listNamespacedCustomObject(
-            constants.ARGO_K8S_API_GROUP,
-            constants.ARGO_K8S_API_VERSION,
-            namespace,
-            plural,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            this.info.getPackageLabel()
-        );
-        return response.body["items"];
+    static async workflowTemplates(namespace: string, cluster: boolean, labelSelector: string) {
+        let response;
+        if (cluster) {
+            response = await customK8sApi.listClusterCustomObject(
+                constants.ARGO_K8S_API_GROUP,
+                constants.ARGO_K8S_API_VERSION,
+                constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_PLURAL,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                labelSelector,
+            );
+        } else {
+            response = await customK8sApi.listNamespacedCustomObject(
+                constants.ARGO_K8S_API_GROUP,
+                constants.ARGO_K8S_API_VERSION,
+                namespace,
+                constants.ARGO_WORKFLOW_TEMPLATES_PLURAL,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                labelSelector
+            );
+        }
+        return response.body.items;
     }
 
     /**
      * Deletes workflow templates associated with the package
      * @returns
      */
-    async deleteWorkflowTemplates(namespace: any, cluster: boolean, dryRun?: string) {
+    async deleteWorkflowTemplates(namespace: string, cluster: boolean, dryRun?: string) {
         appendDryRunTag(dryRun, `Deleting templates for package ${this.metadata.name}`);
 
-        let plural = `${constants.ARGO_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
-        if (cluster) {
-            await customK8sApi.deleteClusterCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                plural,
-                this.metadata.name,
-                undefined,
-                undefined,
-                dryRun,
-            );
-        } else {
-            await customK8sApi.deleteNamespacedCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                this.metadata.namespace,
-                plural,
-                this.metadata.name,
-                undefined,
-                undefined,
-                dryRun,
-            );
+        let toDelete = [];
+        for (const workflowTemplate of await Package.workflowTemplates(
+            namespace,
+            cluster,
+            PackageInfo.getPackageLabel(this.info.name)
+        )) {
+            if (workflowTemplate.kind === constants.ARGO_WORKFLOW_TEMPLATES_KIND) {
+                toDelete.push(
+                    customK8sApi.deleteNamespacedCustomObject(
+                        constants.ARGO_K8S_API_GROUP,
+                        constants.ARGO_K8S_API_VERSION,
+                        workflowTemplate.metadata.namespace,
+                        constants.ARGO_WORKFLOW_TEMPLATES_PLURAL,
+                        workflowTemplate.metadata.name,
+                        undefined,
+                        undefined,
+                        dryRun
+                    )
+                );
+            } else {
+                toDelete.push(
+                    customK8sApi.deleteClusterCustomObject(
+                        constants.ARGO_K8S_API_GROUP,
+                        constants.ARGO_K8S_API_VERSION,
+                        constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_PLURAL,
+                        workflowTemplate.metadata.name,
+                        undefined,
+                        undefined,
+                        dryRun
+                    )
+                );
+            }
         }
+        return await Promise.all(toDelete);
     }
 
     /**
@@ -496,35 +506,7 @@ export class Package {
      * @returns
      */
     static async info(namespace: string, packageName: string, cluster: boolean) {
-        let response: K8sApiListResponse;
-        let plural = `${constants.ARGO_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
-
-        if (cluster) {
-            plural = `${constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
-            response = await customK8sApi.listClusterCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                plural,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                PackageInfo.getPackageLabel(packageName)
-            );
-        } else {
-            response = await customK8sApi.listNamespacedCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                namespace,
-                plural,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                PackageInfo.getPackageLabel(packageName)
-            );
-        }
-        const items = response.body.items;
+        const items = await Package.workflowTemplates(namespace, cluster, PackageInfo.getPackageLabel(packageName));
         if (items.length !== 1) {
             console.error(red(`Package "${packageName}" is not found.`));
             process.exit(1);
@@ -539,34 +521,17 @@ export class Package {
      * @returns {Package[]} packages
      */
     static async list(namespace: string, cluster: boolean): Promise<Package[]> {
-        let response: K8sApiListResponse;
-        let plural = `${constants.ARGO_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
-
-        if (cluster) {
-            plural = `${constants.ARGO_CLUSTER_WORKFLOW_TEMPLATES_KIND.toLowerCase()}s`;
-            response = await customK8sApi.listClusterCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                plural,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Package.getInstallerLabel()
-            );
-        } else {
-            response = await customK8sApi.listNamespacedCustomObject(
-                constants.ARGO_K8S_API_GROUP,
-                constants.ARGO_K8S_API_VERSION,
-                namespace,
-                plural,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Package.getInstallerLabel()
-            );
-        }
-        return response.body.items.map((template: any) => new Package(template));
+        const result = await Package.workflowTemplates(namespace, cluster, Package.getInstallerLabel());
+        const allPackageInfos = result.map((template: any) => new Package(template).info);
+        const uniquePackages = [];
+        const uniquePackageMap = {};
+        allPackageInfos.forEach((info: PackageInfo) => {
+            const key = `${info.name}|${info.version}|${info.parent}|${info.registry}`;
+            if (!(key in uniquePackageMap)) {
+                uniquePackageMap[key] = undefined;
+                uniquePackages.push(info);
+            }
+        });
+        return uniquePackages;
     }
 }

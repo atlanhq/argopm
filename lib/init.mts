@@ -1,3 +1,4 @@
+import { red } from "ansicolor";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import shell from "shelljs";
 import { getDirName } from "./utils.mjs";
@@ -21,7 +22,8 @@ export const init = async (namespace: string, createNamespace: boolean, registry
     console.log(`Installing from the current directory (${dirPath}) with the package name "${packageName}"...`);
 
     if (existsSync(packageJsonPath)) {
-        throw new Error(`Files already present in the ${dirPath}. Run this command again with --force to ignore`);
+        console.error(red(`Files already present in the ${dirPath}. Run this command again with --force to ignore`));
+        process.exit(1);
     }
 
     const skeletonPackagePath = `${__dirname}/static/package`;
@@ -31,7 +33,7 @@ export const init = async (namespace: string, createNamespace: boolean, registry
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     packageJson.argopm = { namespace, createNamespace, registry, cluster };
 
-    writeFileSync(packageJsonPath, packageJson);
+    writeFileSync(packageJsonPath, JSON.stringify(packageJson, undefined, 2));
 
     return packageName;
 };

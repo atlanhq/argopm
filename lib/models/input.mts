@@ -41,12 +41,12 @@ export class Input {
      * @param {Input} input
      */
     checkRequiredArgs(input: Input) {
-        this.parameters.forEach((parameter) => {
+        for (const parameter of this.parameters) {
             if (parameter.isRequired && input.getParameterValue(parameter.name) === undefined) {
                 console.error(red(`Required parameter missing '${parameter.name}'`));
                 process.exit(1);
             }
-        });
+        }
         return true;
     }
 

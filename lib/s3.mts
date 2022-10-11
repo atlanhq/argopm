@@ -95,7 +95,7 @@ export class S3 {
      *
      * @param {String} dirPath Absolute path of the directory
      */
-    async uploadStaticFiles(dirPath) {
+    async uploadStaticFiles(dirPath: string) {
         if (existsSync(`${dirPath}/static`)) {
             let dirs = await walk(`${dirPath}/static`);
             dirs = dirs.filter((dir) => !dir.endsWith(".md"));
