@@ -1,7 +1,13 @@
-const constants = require("../constants").constants;
-const { compare } = require("compare-versions");
+import { constants } from "../constants.mjs";
+import { compare } from "compare-versions";
+import { GenericK8sSpecType } from "../k8s.mjs";
 
-class Resource {
+export class Resource {
+    resource: GenericK8sSpecType;
+    version: string;
+    resourceVersion: string;
+    metadata: any;
+
     /**
      *
      * @param {Object} resource k8s resource object
@@ -24,15 +30,14 @@ class Resource {
     updateStrategyIsRecreate() {
         return this.resource.kind === constants.ARGO_DATAFLOW_KIND;
     }
-}
-/**
- *
- * @param {Object} resource
- * @returns {string}
- */
-Resource.getVersion = function (resource) {
-    if (!resource || !resource.metadata || !resource.metadata.labels) return "0.0.0";
-    return resource.metadata.labels[constants.ARGOPM_LIBRARY_VERSION_LABEL];
-};
 
-module.exports = Resource;
+    /**
+     *
+     * @param {Object} resource
+     * @returns {string}
+     */
+    static getVersion(resource) {
+        if (!resource || !resource.metadata || !resource.metadata.labels) return "0.0.0";
+        return resource.metadata.labels[constants.ARGOPM_LIBRARY_VERSION_LABEL];
+    }
+}

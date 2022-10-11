@@ -1,6 +1,4 @@
-"use strict";
-
-const constants = {
+export const constants = {
     ARGOPM_LIBRARY_NAME_LABEL: "package.argoproj.io/name",
     ARGOPM_LIBRARY_VERSION_LABEL: "package.argoproj.io/version",
     ARGOPM_LIBRARY_PARENT_LABEL: "package.argoproj.io/parent",
@@ -20,7 +18,7 @@ const constants = {
     ARGO_CRON_WORKFLOW_KIND: "CronWorkflow",
     ARGO_DATAFLOW_KIND: "Pipeline",
     CONFIGMAP_KIND: "ConfigMap",
-    SECERT_KIND: "Secret",
+    SECRET_KIND: "Secret",
 
     // workflow
     ARGO_K8S_API_GROUP: "argoproj.io",
@@ -40,5 +38,3 @@ const constants = {
     ATLAN_DEFAULTS_CONFIGMAP_NAME: "atlan-defaults",
     ATLAN_DEFAULTS_CONFIGMAP_NAMESPACE: "default",
 };
-
-exports.constants = constants;

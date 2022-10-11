@@ -1,12 +1,18 @@
-"use strict";
-const Parameter = require("./parameter").Parameter;
-const { yellow } = require("ansicolor");
+import { Parameter } from "./parameter.mjs";
+import { red, yellow } from "ansicolor";
 
-class Input {
+export type InputObjectType = {
+    parameters?: any;
+    artifacts?: any;
+};
+
+export class Input {
+    parameters: Parameter[];
+
     /**
      * @param {Object} inputsObj
      */
-    constructor(inputsObj) {
+    constructor(inputsObj: InputObjectType) {
         if (!inputsObj) {
             inputsObj = {
                 parameters: undefined,
@@ -16,7 +22,11 @@ class Input {
         this.parameters = Parameter.generate(inputsObj.parameters);
     }
 
-    info() {
+    /**
+     * Return info of Input
+     * @returns {string}
+     */
+    info(): string {
         let inputHelp = yellow("Inputs:\n");
 
         inputHelp += `- ${yellow("Parameters: \n")}`;
@@ -30,16 +40,14 @@ class Input {
      * Check the requirement parameters to run
      * @param {Input} input
      */
-    checkRequiredArgs(input) {
-        const capturedThis = this;
-        return new Promise(function (resolve, reject) {
-            capturedThis.parameters.forEach((parameter) => {
-                if (parameter.isRequired && input.getParameterValue(parameter.name) === undefined) {
-                    reject(`Required parameter missing '${parameter.name}'`);
-                }
-            });
-            resolve();
-        });
+    checkRequiredArgs(input: Input) {
+        for (const parameter of this.parameters) {
+            if (parameter.isRequired && input.getParameterValue(parameter.name) === undefined) {
+                console.error(red(`Required parameter missing '${parameter.name}'`));
+                process.exit(1);
+            }
+        }
+        return true;
     }
 
     /**
@@ -47,7 +55,7 @@ class Input {
      * @param {string} key
      * @returns {string}
      */
-    getParameterValue(key) {
+    getParameterValue(key: string): string {
         let value = undefined;
         this.parameters.forEach((parameter) => {
             if (parameter.name === key) value = parameter.value;
@@ -55,5 +63,3 @@ class Input {
         return value;
     }
 }
-
-exports.Input = Input;

@@ -1,11 +1,17 @@
-FROM node:14-alpine
+ARG BUILD_IMAGE=node:18-alpine
 
-RUN mkdir /app
+FROM $BUILD_IMAGE as builder
+WORKDIR /app
+COPY . /app
+RUN npm install && npm run build
 
+FROM $BUILD_IMAGE as runtime
 WORKDIR /app
 
-COPY . /app
+COPY --from=builder /app/dist/argopm.mjs /app/
+COPY ./lib/static/ /app/static/
 
-RUN npm link
+# Shelljs, a dep of K8s client, does not work well with bundlers
+RUN npm i shelljs
 
-ENTRYPOINT ["argopm"]
+ENTRYPOINT [ "./argopm.mjs" ]
