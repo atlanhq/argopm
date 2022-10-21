@@ -1,33 +1,61 @@
 ## Pipelines
 
-The yaml files in this directory are installed as dataflow pipelines on the Argo instance in the cluster.
+> The yaml files in this directory are installed as dataflow pipelines on the [numaflow](https://numaflow.numaproj.io/) instance in the cluster.
 
 ### Sample Pipeline
 
 ```yaml
-apiVersion: dataflow.argoproj.io/v1alpha1
+apiVersion: numaflow.numaproj.io/v1alpha1
 kind: Pipeline
 metadata:
+  labels:
+    numaflow.numaproj.io/component: pipeline
+    numaflow.numaproj.io/part-of: numaflow
   annotations:
-    dataflow.argoproj.io/description: |-
+    # Modify your pipeline name here
+    numaflow.numaproj.io/pipeline-name: 101-hello
+    # Modify your vertex name here
+    numaflow.numaproj.io/vertex-name: in
+    # Modify your pipeline description here
+    numaflow.numaproj.io/description: |-
       This is the hello world of pipelines.
 
       It uses a cron schedule as a source and then just cat the message to a log
-    dataflow.argoproj.io/owner: argoproj-labs
-    dataflow.argoproj.io/test: 'true'
+    numaflow.numaproj.io/owner: altanhq
+    numaflow.numaproj.io/test: 'true'
+  # Modify your pipeline name here
   name: 101-hello
-  namespace: argo-dataflow-system
+  namespace: numaflow-system
 spec:
-  steps:
-  - cat: {}
-    name: main
-    sinks:
-    - log: {}
-    sources:
-    - cron:
-        schedule: '*/3 * * * * *'
+  # Data processing tasks
+  vertices:
+    # Sources / Inputs
+    - name: in
+      source:
+        generator:
+          rpu: 5
+          duration: 1s
+    # User-defined functions 
+    - name: cat
+      udf:
+        builtin:
+          name: cat
+      containerTemplate:
+        env:
+          - name: NUMAFLOW_DEBUG
+            value: "true"
+    # Sinks 
+    - name: out
+      sink:
+        log: {}
+  # The relationship between the vertices
+  edges:
+    - from: in
+      to: cat
+    - from: cat
+      to: out
 ```
 
 ### Useful Links
 
-- https://github.com/argoproj-labs/argo-dataflow
+- https://numaflow.numaproj.io/pipeline
