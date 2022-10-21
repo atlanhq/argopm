@@ -1,6 +1,6 @@
 ## Pipelines
 
-> The yaml files in this directory are installed as dataflow pipelines on the [numaflow](https://numaflow.numaproj.io/) instance in the cluster.
+> The yaml files in this directory are installed as pipelines on the [numaflow](https://numaflow.numaproj.io/) instance in the cluster.
 
 ### Sample Pipeline
 
@@ -42,6 +42,7 @@ spec:
           name: cat
       containerTemplate:
         env:
+          # This flag will enable debug for `numaflow`, please remove this if it's production 
           - name: NUMAFLOW_DEBUG
             value: "true"
     # Sinks 
