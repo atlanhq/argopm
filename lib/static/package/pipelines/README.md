@@ -8,9 +8,6 @@
 apiVersion: numaflow.numaproj.io/v1alpha1
 kind: Pipeline
 metadata:
-  labels:
-    numaflow.numaproj.io/component: pipeline
-    numaflow.numaproj.io/part-of: numaflow
   annotations:
     # Modify your pipeline name here
     numaflow.numaproj.io/pipeline-name: 101-hello
