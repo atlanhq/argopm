@@ -52,7 +52,7 @@ yargs
                     default: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 }),
         handler: (argv) => {
-            var options = {
+            const options = {
                 force: argv["f"],
                 cronString: argv["cs"],
                 timeZone: argv["tz"],
