@@ -41,7 +41,7 @@ This package was bootstrapped using argopm
 -   `argopm run`
 -   `argopm info`
 
-For more details on these commands run `argom --help`
+For more details on these commands run `argopm --help`
 
 ## Pre-requisites
 
