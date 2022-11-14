@@ -9,6 +9,10 @@
     "eslint": "eslint --fix .",
     "lint-staged": "lint-staged"
   },
+  "engines" : { 
+    "npm" : ">=8.0.0",
+    "node" : ">=16.0.0"
+  },
   "author": "Atlan",
   "license": "MIT",
   "dependencies": {

@@ -6,7 +6,7 @@ const init = require("../lib/init").init;
 
 const yargs = require("yargs");
 
-const { cyan, dim, bright } = require("ansicolor");
+const { cyan, dim, bright, red } = require("ansicolor");
 const asTable = require("as-table").configure({
     title: (x) => bright(x),
     delimiter: dim(cyan(" | ")),
@@ -52,7 +52,7 @@ yargs
                     default: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 }),
         handler: (argv) => {
-            var options = {
+            const options = {
                 force: argv["f"],
                 cronString: argv["cs"],
                 timeZone: argv["tz"],
@@ -86,6 +86,9 @@ yargs
                 })
                 .then((info) => {
                     console.log(info);
+                })
+                .catch((err) => {
+                    console.log(red(`${err}`));
                 });
         },
     })
