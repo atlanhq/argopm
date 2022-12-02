@@ -9,7 +9,7 @@
     "eslint": "eslint --fix .",
     "lint-staged": "lint-staged"
   },
-  "author": "Atlan",
+  "author": "engineering@atlan.com",
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.45.0",
