@@ -67,8 +67,10 @@ yargs
             if (argv.global) {
                 return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster, options).then(
                     (packageName) => {
-                        const re = new RegExp("NAME", "g");
-                        console.log(installHelp.replace(re, packageName));
+                        if (!options.preview) {
+                            const re = new RegExp("NAME", "g");
+                            console.log(installHelp.replace(re, packageName));
+                        }
                     }
                 );
             }
