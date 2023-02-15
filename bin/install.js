@@ -54,7 +54,8 @@ yargs
                 .option("preview", {
                     alias: "p",
                     type: "boolean",
-                    description: "Preview packages to be installed without actually installing them",
+                    description:
+                        "Print JSON-formatted dependency graph of packages to be installed without actually installing them",
                     default: false,
                 }),
         handler: (argv) => {
