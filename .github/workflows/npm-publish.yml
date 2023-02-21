@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master # Change this to your default branch
+      - beta
 jobs:
   npm-publish:
     name: npm-publish
@@ -13,9 +14,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@master
         with:
-          node-version: 10.0.0
+          node-version: 16.13.0
       - name: Publish if version has been updated
-        uses: pascalgn/npm-publish-action@06e0830ea83eea10ed4a62654eeaedafb8bf50fc
+        uses: pascalgn/npm-publish-action@1.3.9
         with: # All of theses inputs are optional
           tag_name: "v%s"
           tag_message: "v%s"
@@ -31,6 +32,8 @@ jobs:
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@master"
       - run: echo "REPOSITORY_NAME=`echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//"`" >> $GITHUB_ENV
+        shell: bash
+      - run: exit 1
         shell: bash
       - name: Set up Buildx 
         id: buildx
