@@ -50,25 +50,37 @@ yargs
                     description: "Time Zone",
                     demandOption: false,
                     default: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                })
+                .option("preview", {
+                    alias: "p",
+                    type: "boolean",
+                    description:
+                        "Print JSON-formatted dependency graph of packages to be installed without actually installing them",
+                    default: false,
                 }),
         handler: (argv) => {
             var options = {
                 force: argv["f"],
                 cronString: argv["cs"],
                 timeZone: argv["tz"],
+                preview: argv["p"],
             };
             if (argv.global) {
                 return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster, options).then(
                     (packageName) => {
-                        const re = new RegExp("NAME", "g");
-                        console.log(installHelp.replace(re, packageName));
+                        if (!options.preview) {
+                            const re = new RegExp("NAME", "g");
+                            console.log(installHelp.replace(re, packageName));
+                        }
                     }
                 );
             }
             return install(argv.package, argv.registry, argv.namespace, argv.save, argv.cluster, options).then(
                 (packageName) => {
-                    const re = new RegExp("NAME", "g");
-                    console.log(installHelp.replace(re, packageName));
+                    if (!options.preview) {
+                        const re = new RegExp("NAME", "g");
+                        console.log(installHelp.replace(re, packageName));
+                    }
                 }
             );
         },
