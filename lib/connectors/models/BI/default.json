@@ -1,0 +1,35 @@
+{
+    "enumDefs": [],
+    "entityDefs": [
+      {
+        "superTypes": [
+          "NAME"
+        ],
+        "name": "ASSET_NAME",
+        "description": "Atlan ASSET_NAME Asset",
+        "typeVersion": "1.1",
+        "serviceType": "atlan",
+        "attributeDefs": [
+          {
+            "name": "<>",
+            "typeName": "string",
+            "isOptional": true,
+            "cardinality": "SINGLE",
+            "isUnique": false,
+            "skipScrubbing": true,
+            "isIndexable": true,
+            "includeInNotification": true,
+            "indexType": "STRING",
+            "indexTypeESFields": {
+              "text": {
+                  "type": "text",
+                  "analyzer": "atlan_text_analyzer"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "relationshipDefs": []
+  }
+  

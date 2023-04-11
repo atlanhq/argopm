@@ -1,0 +1,166 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: atlan-connectors-NAME
+  labels:
+    orchestration.atlan.com/version: "1"
+    orchestration.atlan.com/source: "NAME"
+data:
+  icon: "https://cdn-images-1.medium.com/max/1200/1*8bPQYTZUHcvvk_1fSPwwHw.png"
+  helpdeskLink: ""
+  logo: "https://cdn-images-1.medium.com/max/1200/1*8bPQYTZUHcvvk_1fSPwwHw.png"
+  connector: "NAME"
+  defaultConnectorType: "rest"
+  jdbcCredentialTemplate: "{}"
+  restCredentialTemplate: |
+    {
+      "default": [
+        {
+          "id": 1,
+          "name": "auth",
+          "curl": "curl --location --request POST 'https://{{host}}/v2/auth/token' --header 'Content-Type:application/x-www-form-urlencoded' --data-urlencode 'grant_type=client_credentials'  --data-urlencode 'client_id={{username}}' --data-urlencode 'client_secret={{password}}' --connect-timeout 4"      
+        }
+      ]
+    }
+  odbcCredentialTemplate: "{}"
+  grpcCredentialTemplate: "{}"
+  restMetadataTemplate: |
+    {
+      "default": [
+        {
+          "id": 1,
+          "name": "auth",
+          "curl": "curl --location --request POST 'https://{{host}}/v2/auth/token' --header 'Content-Type:application/x-www-form-urlencoded' --data-urlencode 'grant_type=client_credentials'  --data-urlencode 'client_id={{username}}' --data-urlencode 'client_secret={{password}}' --connect-timeout 4"
+        }
+      ]
+    }
+  restMetadataOutputTransformerTemplate: |
+    {
+
+    }
+  odbcTemplate: "{}"
+  grpcTemplate: "{}"
+  sageTemplate: |
+    {
+      
+    }
+  config: |  
+    {
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": false,
+          "ui": {
+            "label": "Name",
+            "hidden": true,
+            "placeholder": "Host Name"
+          }
+        },
+        "connector": {
+          "type": "string",
+          "required": false,
+          "ui": {
+            "label": "Connector",
+            "hidden": true,
+            "placeholder": "Connector"
+          }
+        },
+        "connectorType": {
+          "type": "string",
+          "required": false,
+          "ui": {
+            "key": "_host",
+            "label": "connectorType",
+            "placeholder": "connectorType",
+            "hidden": true
+          }
+        },
+        "host": {
+          "type": "string",
+          "required": true,
+          "enum": ["aws-api.NAMEcomputing.com", "api.NAMEcomputing.com"],
+          "enumNames": ["aws-api.NAMEcomputing.com - For AWS Hosted Organizations", "api.NAMEcomputing.com - For GCP Hosted Organizations"],
+          "default": "aws-api.NAMEcomputing.com",
+          "ui": {
+            "widget": "select",
+            "label": "Endpoint",
+            "grid": 8,
+            "hidden": false,
+            "placeholder": "Endpoint"
+          }
+        },
+        "auth-type": {
+          "type": "string",
+          "enum": ["api_token"],
+          "default": "api_token",
+          "required": true,
+          "enumNames": ["API Token"],
+          "ui": {
+            "widget": "radio",
+            "label": "Authentication",
+            "placeholder": "Credential Type",
+            "rules": [
+              {
+                "required": true,
+                "message": "Please enter a valid authentication type"
+              }
+            ]
+          }
+        },
+        "api_token": {
+          "type": "object",
+          "properties": {
+            "username": {
+              "type": "string",
+              "required": true,
+              "ui": {
+                "label": "Client ID",
+                "placeholder": "Client ID",
+                "feedback": true,
+                "grid": 4,
+                "rules": [
+                  {
+                    "required": true,
+                    "message": "Please enter a valid client Id"
+                  }
+                ]
+              }
+            },
+            "password": {
+              "type": "string",
+              "required": true,
+              "ui": {
+                "widget": "password",
+                "label": "API Token",
+                "feedback": true,
+                "placeholder": "API Token",
+                "grid": 4,
+                "rules": [
+                  {
+                    "required": true,
+                    "message": "Please enter a valid API token"
+                  }
+                ]
+              }
+            }
+          },
+          "ui": {
+            "widget": "nested",
+            "label": "Client ID & API Token",
+            "placeholder": "Credential Type",
+            "nestedValue": false,
+            "hidden": true
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "auth-type": {
+              "const": "api_token"
+            }
+          },
+          "required": ["api_token"]
+        }
+      ]
+    }

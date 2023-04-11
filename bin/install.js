@@ -3,7 +3,9 @@ const { install, installGlobal } = require("../lib/install.js");
 const { initHelp, installHelp } = require("../lib/help");
 const { uninstall, info, run, list } = require("../lib/index");
 const init = require("../lib/init").init;
+const cinit = require("../lib/init").cinit;
 
+const yargsInteractive = require("yargs-interactive");
 const yargs = require("yargs");
 
 const { cyan, dim, bright } = require("ansicolor");
@@ -12,6 +14,39 @@ const asTable = require("as-table").configure({
     delimiter: dim(cyan(" | ")),
     dash: bright(cyan("-")),
 });
+
+const options = {
+    name: {
+        type: "input",
+        describe: "Enter connector name",
+    },
+    type: {
+        type: "list",
+        describe: "Enter connector type",
+        choices: ["BI", "SQL", "ETL"],
+    },
+    auth: {
+        type: "checkbox",
+        describe: "Enter oauth type",
+        choices: ["basic", "api", "oauth2", "aws", "gcp"],
+    },
+    AssetList: {
+        type: "input",
+        describe: "Enter asset names in comma separated list",
+    },
+    models: {
+        type: "confirm",
+        describe: "Build models?",
+    },
+    scripts: {
+        type: "confirm",
+        describe: "Build scripts?",
+    },
+    linear: {
+        type: "confirm",
+        describe: "Create linear task with subtask for package?",
+    },
+};
 
 yargs
     .command({
@@ -150,6 +185,27 @@ yargs
                 console.log(initHelp.replace(re, packageName));
             });
         },
+    })
+    .command({
+        command: "c-init [package_name]",
+        desc: "Initializes an connector Argo package inside the current working directory",
+        builder: () =>
+            yargsInteractive()
+                .usage("$0 connector-init [args]")
+                .interactive(options)
+                .then((result) => {
+                    console.log(result);
+                    cinit(
+                        "false",
+                        result.name,
+                        result.type,
+                        result.auth,
+                        result.AssetList,
+                        result.models,
+                        result.scripts,
+                        result.linear
+                    );
+                }),
     })
     .command({
         command: "list",

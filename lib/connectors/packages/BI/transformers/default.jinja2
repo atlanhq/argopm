@@ -1,0 +1,19 @@
+{
+    "typeName": "ASSET_NAME",
+    "status": "ACTIVE",
+    "attributes": {
+        "connectorName": "{{external_map['integration_name']}}",
+        "connectionName": "{{external_map['connection_name']}}",
+        "connectionQualifiedName": "{{external_map['connection_qn']}}",
+        "lastSyncRunAt": {{now}},
+        "lastSyncWorkflowName": "{{external_map['crawler_name']}}",
+        "lastSyncRun": "{{external_map['workflow_name']}}",
+        "tenantId": "{{external_map['tenant_id']}}",
+        
+        "qualifiedName": "{{external_map['connection_qn']}}/{{record['id']}}",
+        
+        "name": {{record.get('name') | tojson}},
+        "sourceCreatedAt": "{{convert_date(record['createdAt'], format="%Y-%m-%dT%H:%M:%S.%fZ")}}",
+        "sourceUpdatedAt": "{{convert_date(record['updatedAt'], format="%Y-%m-%dT%H:%M:%S.%fZ")}}",
+    }
+}
