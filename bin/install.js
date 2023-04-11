@@ -34,10 +34,6 @@ const options = {
         type: "input",
         describe: "Enter asset names in comma separated list",
     },
-    models: {
-        type: "confirm",
-        describe: "Build models?",
-    },
     scripts: {
         type: "confirm",
         describe: "Build scripts?",
@@ -187,7 +183,7 @@ yargs
         },
     })
     .command({
-        command: "c-init [package_name]",
+        command: "cinit [package_name]",
         desc: "Initializes an connector Argo package inside the current working directory",
         builder: () =>
             yargsInteractive()
@@ -201,7 +197,6 @@ yargs
                         result.type,
                         result.auth,
                         result.AssetList,
-                        result.models,
                         result.scripts,
                         result.linear
                     );
