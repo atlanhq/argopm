@@ -3,7 +3,9 @@ const { install, installGlobal } = require("../lib/install.js");
 const { initHelp, installHelp } = require("../lib/help");
 const { uninstall, info, run, list } = require("../lib/index");
 const init = require("../lib/init").init;
+const connectorInit = require("../lib/init").connectorInit;
 
+const yargsInteractive = require("yargs-interactive");
 const yargs = require("yargs");
 
 const { cyan, dim, bright } = require("ansicolor");
@@ -12,6 +14,34 @@ const asTable = require("as-table").configure({
     delimiter: dim(cyan(" | ")),
     dash: bright(cyan("-")),
 });
+
+const options = {
+    interactive: {
+        default: true,
+    },
+    name: {
+        type: "input",
+        describe: "Enter connector name",
+    },
+    type: {
+        type: "list",
+        describe: "Enter connector type",
+        choices: ["BI", "SQL", "ETL"],
+    },
+    auth: {
+        type: "checkbox",
+        describe: "Enter oauth type",
+        choices: ["basic", "api", "oauth2", "aws", "gcp"],
+    },
+    AssetList: {
+        type: "input",
+        describe: "Enter asset names in comma separated list",
+    },
+    linear: {
+        type: "confirm",
+        describe: "Create linear task with subtask for package?",
+    },
+};
 
 yargs
     .command({
@@ -138,17 +168,41 @@ yargs
         command: "init [package_name]",
         desc: "Initializes an Argo package inside the current working directory",
         builder: (yargs) =>
-            yargs.option("force", {
-                alias: "f",
-                type: "boolean",
-                description: "Force the command",
-                default: true,
-            }),
+            yargs
+                .option("force", {
+                    alias: "f",
+                    type: "boolean",
+                    description: "Force the command",
+                    default: true,
+                })
+                .option("connector", {
+                    alias: "connect",
+                    type: "boolean",
+                    description: "want to add connector the command",
+                    default: false,
+                }),
         handler: (argv) => {
-            init(argv.force, argv.package_name).then((packageName) => {
-                const re = new RegExp("NAME", "g");
-                console.log(initHelp.replace(re, packageName));
-            });
+            if (argv.connector) {
+                yargsInteractive()
+                    .usage("$0 <command> [args]")
+                    .interactive(options)
+                    .then((result) => {
+                        connectorInit(
+                            argv.force,
+                            result.name,
+                            result.type,
+                            result.auth,
+                            result.AssetList,
+                            result.scripts,
+                            result.linear
+                        );
+                    });
+            } else {
+                init(argv.force, argv.package_name).then((packageName) => {
+                    const re = new RegExp("NAME", "g");
+                    console.log(initHelp.replace(re, packageName));
+                });
+            }
         },
     })
     .command({

@@ -1,0 +1,649 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: atlan-NAME
+spec:
+  entrypoint: main
+  templates:
+    - name: main
+      inputs:
+        parameters:
+          #credential
+          - name: credentials-fetch-strategy
+            value: "credential_guid"
+            enum:
+              - "k8s_secret"
+              - "credential_guid"
+          - name: credential-kube-secret-name
+            value: ""
+          - name: credential-guid
+            value: ""
+          #connection atlan object
+          - name: connection
+            value: ""
+          # extraction
+          - name: runtime-properties
+            value: "{}"
+          - name: fetch-folderless-assets
+            value: "true"
+          - name: include-filter
+            value: "{}"
+          - name: exclude-filter
+            value: "{}"
+          #publish mode
+          - name: publish-mode
+            value: "production"
+            enum:
+              - "production"
+              - "test"
+              - "dev"
+
+          #publish credential
+          - name: atlas-auth-type
+            value: "internal"
+            enum:
+              - "internal"
+              - "apikey"
+
+          # enable classification match
+          - name: auto-classification
+            value: "false"
+            enum:
+              - "true"
+              - "false"
+
+          - name: attachment-confidence-threshold
+            value: "0.8"
+          # Scripts
+          - name: marketplace-scripts-revision
+            valueFrom:
+              configMapKeyRef:
+                name: atlan-runtime-packages-config
+                key: "marketplaceScriptsBranch"
+                optional: true
+              default: "master"
+          # Revisions
+          - name: marketplace-packages-revision
+            valueFrom:
+              configMapKeyRef:
+                name: atlan-runtime-packages-config
+                key: "marketplacePackagesBranch"
+                optional: true
+              default: "master"
+      dag:
+        tasks:
+          - name: extract
+            template: extract-NAME-metadata
+            arguments:
+              parameters:
+                - name: credential-guid
+                  value: "{{inputs.parameters.credential-guid}}"
+                - name: connection-qualified-name
+                  value: "{{=jsonpath(inputs.parameters.connection, '$.attributes.qualifiedName')}}"
+                - name: output-prefix
+                  value: "argo-artifacts/{{=jsonpath(inputs.parameters.connection, '$.attributes.qualifiedName')}}/extracted-metadata/{{workflow.name}}"
+                - name: threads
+                  value: "2"
+                - name: fetch-folderless-assets
+                  value: "{{inputs.parameters.fetch-folderless-assets}}"
+                - name: include-filter
+                  value: "{{inputs.parameters.include-filter}}"
+                - name: exclude-filter
+                  value: "{{inputs.parameters.exclude-filter}}"
+                - name: marketplace-scripts-revision
+                  value: "{{inputs.parameters.marketplace-scripts-revision}}"
+                - name: marketplace-packages-revision
+                  value: "{{inputs.parameters.marketplace-packages-revision}}"
+                - name: statsd-global-tags
+                  value: "workflow={{workflow.name}},connector=NAME,package=atlan-NAME,connection={{=jsonpath(inputs.parameters.connection, '$.attributes.qualifiedName')}},template={{workflow.labels.workflows.argoproj.io/workflow-template}}"
+          - name: process
+            template: process-NAME-metadata
+            depends: "extract.Succeeded"
+            arguments:
+              parameters:
+                - name: connection-qualified-name
+                  value: "{{=jsonpath(inputs.parameters.connection, '$.attributes.qualifiedName')}}"
+                - name: git-kube-secret-name
+                  value: "git-ssh"
+                - name: git-kube-ssh-key
+                  value: "private-key"
+                - name: statsd-host
+                  value: "prometheus-statsd-exporter.monitoring.svc.cluster.local"
+                - name: statsd-port
+                  value: "9125"
+                - name: statsd-global-tags
+                  value: "workflow={{workflow.name}},connector=NAME,package=atlan-NAME,connection={{=jsonpath(inputs.parameters.connection, '$.attributes.qualifiedName')}},template={{workflow.labels.workflows.argoproj.io/workflow-template}}"
+                - name: marketplace-scripts-revision
+                  value: "{{inputs.parameters.marketplace-scripts-revision}}"
+                - name: marketplace-packages-revision
+                  value: "{{inputs.parameters.marketplace-packages-revision}}"
+                - name: fetch-folderless-assets
+                  value: "{{inputs.parameters.fetch-folderless-assets}}"
+                - name: include-filter
+                  value: "{{inputs.parameters.include-filter}}"
+                - name: exclude-filter
+                  value: "{{inputs.parameters.exclude-filter}}"
+          - name: publish
+            depends: "process.Succeeded"
+            template: publish-NAME-metadata
+            arguments:
+              parameters:
+                - name: marketplace-scripts-revision
+                  value: "{{inputs.parameters.marketplace-scripts-revision}}"
+                - name: marketplace-packages-revision
+                  value: "{{inputs.parameters.marketplace-packages-revision}}"
+                - name: connection
+                  value: "{{inputs.parameters.connection}}"
+                - name: mode
+                  value: "{{inputs.parameters.publish-mode}}"
+                - name: source
+                  value: "NAME"
+                - name: atlas-auth-type
+                  value: "{{inputs.parameters.atlas-auth-type}}"
+                - name: fetch-folderless-assets
+                  value: "{{inputs.parameters.fetch-folderless-assets}}"
+                - name: include-filter
+                  value: "{{inputs.parameters.include-filter}}"
+                - name: exclude-filter
+                  value: "{{inputs.parameters.exclude-filter}}"
+                - name: exclude-workbook-regex
+                  value: "{{inputs.parameters.exclude-workbook-regex}}"
+                - name: atlan-web-kube-secret
+                  value: "argo-client-creds"
+                - name: heracles-uri
+                  value: "http://heracles-service.heracles.svc.cluster.local"
+                - name: atlas-api-uri
+                  value: "http://atlas-service-atlas.atlas.svc.cluster.local/api/atlas/v2"
+                - name: publish-chunk-size
+                  value: "100"
+                - name: git-kube-secret-name
+                  value: "git-ssh"
+                - name: git-kube-ssh-key
+                  value: "private-key"
+                - name: statsd-host
+                  value: "prometheus-statsd-exporter.monitoring.svc.cluster.local"
+                - name: statsd-port
+                  value: "9125"
+                - name: statsd-global-tags
+                  value: "workflow={{workflow.name}},connector=NAME,package=atlan-NAME,connection={{=jsonpath(inputs.parameters.connection, '$.attributes.qualifiedName')}},template={{workflow.labels.workflows.argoproj.io/workflow-template}}"
+  
+    - name: extract-NAME-metadata
+      inputs:
+        parameters:
+          - name: credential-guid
+          - name: connection-qualified-name
+          - name: output-prefix
+            value: "argo-artifacts/{{workflow.namespace}}/{{workflow.name}}"
+          - name: fetch-folderless-assets
+          - name: include-filter
+          - name: exclude-filter
+          - name: marketplace-scripts-revision
+          - name: marketplace-packages-revision
+          - name: statsd-global-tags
+      dag:
+        tasks:
+          - name: extract-assets
+            template: NAME-api
+            withItems:
+              - { "url": "https://NAME.<REGION>.amazonaws.com/accounts/<AWS_ACCOUNT_ID>/analyses", "name": "analysis" }
+            arguments:
+              parameters:
+                - name: url
+                  value: "{{item.url}}"
+                - name: output-prefix
+                  value: "{{inputs.parameters.output-prefix}}/{{item.name}}"
+                - name: NAME-request-config
+                  value: |
+                    {
+                      "headers": {
+                        "Content-Type":"application/x-amz-json-1.1"
+                      },
+                      "json": {
+                        "MaxResults": 100
+                      }
+                    }
+                - name: credential-guid
+                  value: "{{inputs.parameters.credential-guid}}"
+                - name: output-chunk-size
+                  value: "1000"
+                - name: statsd-global-tags
+                  value: "{{inputs.parameters.statsd-global-tags}}"
+                - name: NAME-execution-script
+                  value: |
+                    if state == ExecutionState.RAW_INPUT_PROCESS:
+                      creds_arr = secrets["result-0.json"].split("""\n""")
+                      region = ''
+                      for cred in creds_arr:
+                        LOGGER.debug("cred %s" % cred)
+                        if 'AWS_REGION' in cred:
+                          region = cred.split('=')[-1].replace('"', '')
+                          region = region.strip()
+
+                      request_config['url'] = request_config['url'].replace('<REGION>', region)
+
+                      accountid = ''
+                      for cred in creds_arr:
+                        if 'AWS_ACCOUNT_ID' in cred:
+                          accountid = cred.split('=')[-1].replace('"', '')
+
+                      request_config['url'] = request_config['url'].replace('<AWS_ACCOUNT_ID>', accountid)
+
+
+                    if state == ExecutionState.OUTPUT_PROCESS:
+                        output = json.loads(output)
+
+                    if state == ExecutionState.API_POST:
+                      next_token = response.json().get('NextToken', None)
+                      if not next_token:
+                        stop = True
+                      else:
+                        request_config['json']['NextToken'] = next_token
+
+                    if state == ExecutionState.API_FAIL: 
+                      failure_handler=FailureHandler.RETRY
+
+    - name: process-NAME-metadata
+      inputs:
+        parameters:
+          - name: connection-qualified-name
+          - name: git-kube-secret-name
+          - name: git-kube-ssh-key
+          - name: statsd-host
+          - name: statsd-port
+          - name: statsd-global-tags
+          - name: marketplace-scripts-revision
+          - name: marketplace-packages-revision
+          - name: fetch-folderless-assets
+          - name: include-filter
+          - name: exclude-filter
+      dag:
+        tasks:
+          # Process NAME metadata and generate files for transformer
+          - name: process-metadata
+            template: process-metadata-template
+            arguments:
+              parameters:
+                - name: output-prefix
+                  value: "argo-artifacts/{{inputs.parameters.connection-qualified-name}}/processed-metadata/{{workflow.name}}"
+                - name: git-kube-secret-name
+                  value: "{{inputs.parameters.git-kube-secret-name}}"
+                - name: git-kube-ssh-key
+                  value: "{{inputs.parameters.git-kube-ssh-key}}"
+                - name: marketplace-scripts-revision
+                  value: "{{inputs.parameters.marketplace-scripts-revision}}"
+                - name: marketplace-packages-revision
+                  value: "{{inputs.parameters.marketplace-packages-revision}}"
+                - name: fetch-folderless-assets
+                  value: "{{inputs.parameters.fetch-folderless-assets}}"
+                - name: include-filter
+                  value: "{{inputs.parameters.include-filter}}"
+                - name: exclude-filter
+                  value: "{{inputs.parameters.exclude-filter}}"
+                - name: connection-qualified-name
+                  value: "{{inputs.parameters.connection-qualified-name}}"
+              artifacts:
+                - name: extracted-metadata
+                  s3:
+                    key: "argo-artifacts/{{inputs.parameters.connection-qualified-name}}/extracted-metadata/{{workflow.name}}"
+
+    - name: process-metadata-template
+      inputs:
+        parameters:
+          - name: output-prefix
+          - name: marketplace-scripts-revision
+          - name: marketplace-packages-revision
+          - name: git-kube-secret-name
+            value: "git-ssh"
+          - name: git-kube-ssh-key
+            value: "private-key"
+          - name: fetch-folderless-assets
+          - name: include-filter
+          - name: exclude-filter
+          - name: connection-qualified-name
+
+        artifacts:
+          - name: extracted-metadata
+            path: /tmp/extracted-metadata
+          - name: scripts
+            path: /tmp/marketplace-scripts
+            git:
+              repo: git@github.com:atlanhq/marketplace-scripts
+              revision: "{{inputs.parameters.marketplace-scripts-revision}}"
+              insecureIgnoreHostKey: true
+              depth: 1
+              sshPrivateKeySecret:
+                name: "{{inputs.parameters.git-kube-secret-name}}"
+                key: "{{inputs.parameters.git-kube-ssh-key}}"
+          - name: connection-cache
+            optional: true
+            path: "/tmp/connection-cache"
+            s3:
+              key: "connection-cache"
+      outputs:
+        artifacts:
+          - name: processed-metadata
+            path: /tmp/processed-metadata
+            s3:
+              key: "{{inputs.parameters.output-prefix}}"
+            archive:
+              none: { }
+      container:
+        image: ghcr.io/atlanhq/marketplace-scripts-base:0.1.10
+        imagePullPolicy: IfNotPresent
+        workingDir: "/tmp/marketplace-scripts"
+        command: [ "python" ]
+        args:
+          - "-m"
+          - "marketplace_scripts.NAME.metadata"
+          - "--metadata-prefix"
+          - "/tmp/extracted-metadata"
+          - "--cache-prefix"
+          - "/tmp/connection-cache"
+          - "--output-prefix"
+          - "/tmp/processed-metadata"
+          - "--exclude-filter"
+          - "{{inputs.parameters.exclude-filter}}"
+          - "--include-filter"
+          - "{{inputs.parameters.include-filter}}"
+          - "--fetch-folderless-assets"
+          - "{{inputs.parameters.fetch-folderless-assets}}"
+          - "--connection-qualified-name"
+          - "{{inputs.parameters.connection-qualified-name}}"
+
+    - name: publish-NAME-metadata
+      inputs:
+        parameters:
+          - name: marketplace-scripts-revision
+          - name: marketplace-packages-revision
+          - name: connection
+          - name: mode
+          - name: source
+          - name: atlas-api-uri
+          - name: heracles-uri
+          - name: atlan-web-kube-secret
+          - name: atlas-auth-type 
+          - name: publish-chunk-size
+          - name: git-kube-secret-name
+          - name: git-kube-ssh-key
+          - name: statsd-host
+          - name: statsd-port
+          - name: statsd-global-tags
+      dag:
+        tasks:
+          # Run atlan-crawler/generic-publish template
+          - name: publish_metadata
+            templateRef:
+              name: atlan-crawler
+              template: generic-publish
+            arguments:
+              artifacts:
+                - name: data
+                  s3:
+                    key: "argo-artifacts/{{=jsonpath(inputs.parameters.connection, '$.attributes.qualifiedName')}}/processed-metadata/{{workflow.name}}"
+                - name: transformer-config
+                  raw:
+                    data: |
+                      {
+                        "external_map": {
+                          "crawler_name": "{{workflow.labels.workflows.argoproj.io/workflow-template}}",
+                          "tenant_id": "{{workflow.namespace}}",
+                          "integration_name": "{{inputs.parameters.source}}",
+                          "workflow_name": "{{workflow.name}}",
+                          "connection_name": "{{=jsonpath(inputs.parameters.connection, '$.attributes.name')}}",
+                          "connection_qn": "{{=jsonpath(inputs.parameters.connection, '$.attributes.qualifiedName')}}"
+                        },
+                        "output_prefix": "/tmp/entities",
+                        "templates_root": "/tmp/templates",
+                        "transformation_config": [
+                          {
+                            "input_file_pattern": "/tmp/inputs/ASSET_NAME.json",
+                            "template": "packages/atlan/NAME/transformers/ASSET_NAME.jinja2",
+                            "output_file_prefix": "ASSET_NAME/ASSET_NAME",
+                            "output_chunk_size": 10000
+                          }
+                        ]
+                      }
+              parameters:
+                - name: connection
+                  value: "{{inputs.parameters.connection}}"
+                - name: mode
+                  value: "{{inputs.parameters.mode}}"
+                - name: source
+                  value: "{{inputs.parameters.source}}"
+                - name: raw-input-file-sort
+                  value: ""
+                - name: raw-input-folder-sort
+                  value: ""
+                - name: raw-input-file-pattern
+                  value: "**/*.json"
+                - name: publish-chunk-size
+                  value: "{{inputs.parameters.publish-chunk-size}}"
+                - name: atlas-auth-type
+                  value: "{{inputs.parameters.atlas-auth-type}}"
+                - name: statsd-global-tags
+                  value: "{{inputs.parameters.statsd-global-tags}}"
+                - name: marketplace-scripts-revision
+                  value: "{{inputs.parameters.marketplace-scripts-revision}}"
+                - name: marketplace-packages-revision
+                  value: "{{inputs.parameters.marketplace-packages-revision}}"
+
+    - name: NAME-api
+      synchronization:
+        semaphore:
+          configMapKeyRef:
+            name: atlan-NAME
+            key: NAME-api
+      inputs:
+        artifacts:
+          - name: raw-input
+            path: "/tmp/input/"
+            optional: true
+          - name: raw-input-file
+            path: "/tmp/input/input.json"
+            optional: true
+        parameters:
+          - name: threads
+            value: "1"
+          - name: credential-guid
+          - name: NAME-request-config
+            value: |
+              {
+                "headers": {
+                  "Content-Type":"application/x-amz-json-1.1"
+                },
+                "json": {
+                  "MaxResults": 100
+                }
+              }
+          - name: paginate
+            value: "true"
+            enum:
+              - "true"
+              - "false"
+          - name: NAME-output-key
+            value: "TableList"
+          - name: url  
+          - name: NAME-execution-script
+            value: |
+              if "{{inputs.parameters.threads}}" != "1":
+                logger.error("Error! You must pass custom execution script from parent for thread count > 1")
+                raise Exception("Invalid thread count for offset based pagination!")
+              if state == ExecutionState.RAW_INPUT_PROCESS:
+                creds_arr = secrets["result-0.json"].split("""\n""")
+                region = ''
+                for cred in creds_arr:
+                  if 'AWS_REGION' in cred:
+                    region = cred.split('=')[-1].replace('"', '')
+
+                request_config['url'] = request_config['url'].replace('<REGION>', region)
+
+              if state == ExecutionState.OUTPUT_PROCESS:
+                output=json.loads(output)['{{inputs.parameters.NAME-output-key}}']
+
+              if state == ExecutionState.API_POST:
+                next_token = response.json().get('NextToken', None)
+                if not next_token:
+                  stop = True
+                else:
+                  request_config['json']['NextToken'] = next_token
+
+              if state == ExecutionState.API_FAIL:
+                failure_handler=FailureHandler.RETRY
+          - name: output-chunk-size
+            value: 0
+          - name: raw-input-file-pattern
+            value: ""
+          - name: raw-input-paginate
+            value: "0"
+          - name: raw-input-multiline
+            value: "False"
+          - name: pagination-wait-time
+            value: "0"
+          - name: kube-secret-name
+            value: "argo-client-creds"
+          - name: client-id-env
+            value: "login"
+          - name: client-secret-env
+            value: "password"
+          - name: token-url-env
+            value: "host"
+          - name: statsd-host
+            value: "prometheus-statsd-exporter.monitoring.svc.cluster.local"
+          - name: statsd-port
+            value: "9125"
+          - name: statsd-global-tags
+            value: "workflow={{workflow.name}},bot=atlan-NAME"
+          - name: output-prefix
+            value: "argo-artifacts/{{workflow.namespace}}/{{workflow.name}}/{{pod.name}}/"
+          - name: heracles-uri
+            value: "http://heracles-service.heracles.svc.cluster.local"
+          - name: init-execution-script
+            value: |
+              if state == ExecutionState.API_FAIL and (response.status_code >= 500 or response.status_code in {400}):
+                LOGGER.debug('Heracles is unavailable. Performing retry with back-off')
+                failure_handler = FailureHandler.RETRY
+              if state == ExecutionState.OUTPUT_PROCESS:
+
+                credential = json.loads(output)
+                output = ""
+                for key, value in credential.items():
+                  if key == "username":
+                    output += f"""AWS_ACCESS_KEY_ID=\"{str(value)}\"\n"""
+                  elif key == "password":
+                    output += f"""AWS_SECRET_ACCESS_KEY=\"{str(value)}\"\n"""
+                  elif key == "host":
+                    if value is not None:
+                      region = value.split('.')[-3]
+                      output += f"""AWS_REGION=\"{str(region)}\"\n"""
+                  elif key == "extra":
+                    if "region" in value:
+                      region = value.get("region", "")
+                      output += f"""AWS_REGION=\"{str(region)}\"\n"""
+                    if "accountid" in value:
+                      accountid = value.get("accountid", "")
+                      output += f"""AWS_ACCOUNT_ID=\"{str(accountid)}\"\n"""  
+                    if "aws_role_arn" in value:
+                      output += f"""AWS_ROLE_ARN=\"{str(value.get("aws_role_arn", ""))}\"\n"""
+                    if "aws_external_id" in value:
+                      output += f"""AWS_EXTERNAL_ID=\"{str(value.get("aws_external_id", ""))}\"\n"""
+                  else:
+                    continue
+
+              if state == ExecutionState.API_POST:
+                stop = True
+      outputs:
+        artifacts:
+          - name: success
+            path: "/tmp/rest/success"
+            s3:
+              key: "{{inputs.parameters.output-prefix}}/success"
+            archive:
+              none: { }
+          - name: failure
+            path: "/tmp/rest/failure"
+            archive:
+              none: { }
+            s3:
+              key: "{{inputs.parameters.output-prefix}}/failure"
+        parameters:
+          - name: success-num-files
+            valueFrom:
+              path: "/tmp/rest/success/result-gen.txt"
+          - name: failure-num-files
+            valueFrom:
+              path: "/tmp/rest/failure/result-gen.txt"
+      volumes:
+        - name: credentials
+          emptyDir: { }
+      container:
+        image: ghcr.io/atlanhq/rest-master:165b7e5
+        command: [ "./entrypoint.sh" ]
+        volumeMounts:
+          - name: credentials
+            mountPath: /tmp/credentials
+        imagePullPolicy: IfNotPresent
+        args: [
+            "python3", "main.py","GET", "{{inputs.parameters.url}}",
+            "--raw-input-paginate", "{{inputs.parameters.raw-input-paginate}}",
+            "--raw-input-multiline", "{{inputs.parameters.raw-input-multiline}}",
+            "--threads", "{{inputs.parameters.threads}}",
+            "--raw-input-file-pattern", "{{inputs.parameters.raw-input-file-pattern}}",
+            "--request-config", "{{inputs.parameters.NAME-request-config}}",
+            "--execution-script", "{{inputs.parameters.NAME-execution-script}}",
+            "--secrets-path", "/tmp/credentials/success/*.json",
+            "--auth-type", "aws",
+            "--auth-aws-service", "NAME",
+            "--auth-aws-region", "AWS_REGION",
+            "--output-chunk-size", "{{inputs.parameters.output-chunk-size}}",
+            "--output-file-prefix", "/tmp/rest",
+            "--pagination-wait-time", "0",
+            "--max-retries", "10",
+            "--statsd-host", "{{inputs.parameters.statsd-host}}",
+            "--statsd-port", "{{inputs.parameters.statsd-port}}",
+            "--statsd-global-tags", "{{inputs.parameters.statsd-global-tags}}"
+        ]
+      initContainers:
+        - name: fetch-credentials
+          image: ghcr.io/atlanhq/rest-master:165b7e5
+          command: [ "python3", "main.py" ]
+          env:
+            - name: OAUTHLIB_INSECURE_TRANSPORT
+              value: "1"
+            - name: CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: "{{inputs.parameters.kube-secret-name}}"
+                  key: "{{inputs.parameters.client-id-env}}"
+            - name: CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "{{inputs.parameters.kube-secret-name}}"
+                  key: "{{inputs.parameters.client-secret-env}}"
+            - name: TOKEN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: "{{inputs.parameters.kube-secret-name}}"
+                  key: "{{inputs.parameters.token-url-env}}"
+          mirrorVolumeMounts: true
+          args: [
+            "GET",
+            "{{inputs.parameters.heracles-uri}}/credentials/{{inputs.parameters.credential-guid}}/use",
+            "--raw-input", "{}",
+            "--raw-input-file-sort", "",
+            "--raw-input-multiline", "False",
+            "--execution-script", "{{inputs.parameters.init-execution-script}}",
+            "--raw-input-paginate", "0",
+            "--auth-type", "oauth2",
+            "--auth-oauth2-type", "client_credentials",
+            "--auth-oauth2-impersonate-user", "{{=sprig.dig('labels', 'workflows', 'argoproj', 'io/creator', '', workflow)}}",
+            "--auth-oauth2-client-credentials-client-id", "CLIENT_ID",
+            "--auth-oauth2-client-credentials-secret", "CLIENT_SECRET",
+            "--auth-oauth2-client-credentials-token-url", "TOKEN_URL",
+            "--output-chunk-size", "0",
+            "--output-file-prefix", "/tmp/credentials",
+            "--pagination-wait-time", "0",
+            "--max-retries", "10",
+            "--statsd-host", "{{inputs.parameters.statsd-host}}",
+            "--statsd-port", "{{inputs.parameters.statsd-port}}",
+            "--statsd-global-tags", "{{inputs.parameters.statsd-global-tags}}"
+          ]
