@@ -57,13 +57,22 @@ yargs
                     description:
                         "Print JSON-formatted dependency graph of packages to be installed without actually installing them",
                     default: false,
-                }),
+                })
+                .option("azure", {
+                    alias: "az",
+                    type: "boolean",
+                    description:
+                        "Installs packages on azure based tenant with azure artifacts",
+                    default: false,
+                })
+                ,
         handler: (argv) => {
             var options = {
                 force: argv["f"],
                 cronString: argv["cs"],
                 timeZone: argv["tz"],
                 preview: argv["p"],
+                azure: argv["az"],
             };
             if (argv.global) {
                 return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster, options).then(
