@@ -61,11 +61,9 @@ yargs
                 .option("azure", {
                     alias: "az",
                     type: "boolean",
-                    description:
-                        "Installs packages on azure based tenant with azure artifacts",
+                    description: "Replaces s3/key artifacts for azure/blob artifacts in workflow templates",
                     default: false,
-                })
-                ,
+                }),
         handler: (argv) => {
             var options = {
                 force: argv["f"],
