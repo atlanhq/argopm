@@ -57,6 +57,12 @@ yargs
                     description:
                         "Print JSON-formatted dependency graph of packages to be installed without actually installing them",
                     default: false,
+                })
+                .option("azure", {
+                    alias: "az",
+                    type: "boolean",
+                    description: "Replaces s3/key artifacts for azure/blob artifacts in workflow templates",
+                    default: false,
                 }),
         handler: (argv) => {
             var options = {
@@ -64,6 +70,7 @@ yargs
                 cronString: argv["cs"],
                 timeZone: argv["tz"],
                 preview: argv["p"],
+                azure: argv["az"],
             };
             if (argv.global) {
                 return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster, options).then(
