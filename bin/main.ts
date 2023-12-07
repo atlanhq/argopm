@@ -1,8 +1,6 @@
 import {Argv} from "yargs";
 
 
-console.info(`CLI starter.`);
-
 function serve(port: string) {
     console.info(`Serve on port ${port}.`);
 }
