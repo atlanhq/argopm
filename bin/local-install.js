@@ -193,9 +193,10 @@ async function run(packageName, azureArtifacts, extraArgs, channel) {
 
     // Always install numaflow packages since delete-pipelines may have deleted them
     const numaflowPackages = Object.values(packagesMap).filter((pkg) => pkg.isNumaflowPackage);
-    console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
-
-    installPackages(numaflowPackages, extraArgs, azureArtifacts);
+    if (packageName != "@atlan/cloud-packages") {
+        console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
+        installPackages(numaflowPackages, extraArgs, azureArtifacts);
+    }
 
     var safeToInstall = true;
     if (!ignoreSafetyCheck(packageName) && channel == "master") {
