@@ -113,6 +113,9 @@ async function getInstalledPackages() {
     );
     const installedPackages = {};
     for (const clusterWorkflowTemplate of clusterWorkflowTemplates.body.items) {
+        if (!clusterWorkflowTemplate.metadata.annotations || !clusterWorkflowTemplate.metadata.labels) {
+            continue;
+        }
         const package = clusterWorkflowTemplate.metadata.annotations["package.argoproj.io/name"];
         const packageVersion = clusterWorkflowTemplate.metadata.labels["package.argoproj.io/version"];
         if (package && packageVersion) {
