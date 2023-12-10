@@ -149,6 +149,7 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
         }
 
         if (dependencyPackage.dependencies) {
+            packagesToInstall.add(dependencyPackage);
             const dependencyPackagesToInstall = getPackagesToInstall(dependency, packagesMap, installedPackages);
             packagesToInstall = new Set([...packagesToInstall, ...dependencyPackagesToInstall]);
         }
