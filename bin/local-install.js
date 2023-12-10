@@ -142,14 +142,15 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
             throw new Error(`Dependency ${dependency} not found`);
         }
 
-        if (!installedPackages[dependencyPackage.name]) {
-            if (skipVersionCheck || installedPackages[dependencyPackage.name] !== dependencyPackage.version) {
-                packagesToInstall.add(dependencyPackage);
-            }
+        if (!installedPackages[dependencyPackage.name] || dependencyPackage.isNumaflowPackage) {
+            packagesToInstall.add(dependencyPackage);
+        }
+
+        if (skipVersionCheck || installedPackages[dependencyPackage.name] !== dependencyPackage.version) {
+            packagesToInstall.add(dependencyPackage);
         }
 
         if (dependencyPackage.dependencies) {
-            packagesToInstall.add(dependencyPackage);
             const dependencyPackagesToInstall = getPackagesToInstall(dependency, packagesMap, installedPackages);
             packagesToInstall = new Set([...packagesToInstall, ...dependencyPackagesToInstall]);
         }
@@ -193,7 +194,7 @@ async function run(packageName, azureArtifacts, extraArgs, channel) {
     );
 
     // Always install numaflow packages since delete-pipelines may have deleted them
-    const numaflowPackages = Object.values(packagesToInstall).filter((pkg) => pkg.isNumaflowPackage);
+    const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
         installPackages(numaflowPackages, extraArgs, azureArtifacts);
