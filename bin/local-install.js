@@ -172,7 +172,11 @@ function installPackages(packages, extraArgs, azureArtifacts) {
         fs.writeFileSync(packageJSONPath, JSON.stringify(packageJSON, null, 2));
 
         // Install package
-        execSync("cd " + pkg.path + " && argopm install " + extraArgs + " . " + "--azure " + azureArtifacts);
+        try {
+            execSync("cd " + pkg.path + " && argopm install " + extraArgs + " . " + "--azure " + azureArtifacts);
+        } catch (e) {
+            console.log(e);
+        }
     }
 }
 
