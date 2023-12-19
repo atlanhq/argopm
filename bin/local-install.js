@@ -22,7 +22,7 @@ function skipRunningPackagesCheck(packageName, channel) {
         return true;
     }
 
-    const lastSafeRelease = fs.readFileSync(safetyCheckFile, "utf-8");
+    const lastSafeRelease = parseInt(fs.readFileSync(safetyCheckFile, "utf-8"), 10);
     const lastSafeReleaseDate = new Date(lastSafeRelease);
     const now = new Date();
     const diff = now - lastSafeReleaseDate;
