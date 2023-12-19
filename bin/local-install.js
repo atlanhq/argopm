@@ -9,13 +9,17 @@ const { exit } = require("process");
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
 
-function ignoreSafetyCheck(packageName) {
+function skipRunningPackagesCheck(packageName, channel) {
     /**
      * Check if the last safe release was more than 24 hours ago. If not prevent safety check install.
      */
+    if (channel != "master") {
+        return true;
+    }
+
     const safetyCheckFile = `/tmp/atlan-update/${packageName.replace("/", "-")}-last-safe-run.txt`;
     if (!fs.existsSync(safetyCheckFile)) {
-        return false;
+        return true;
     }
 
     const lastSafeRelease = fs.readFileSync(safetyCheckFile, "utf-8");
@@ -201,11 +205,11 @@ async function run(packageName, azureArtifacts, extraArgs, channel) {
     const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
-        installPackages(numaflowPackages, extraArgs, azureArtifacts);
+        // installPackages(numaflowPackages, extraArgs, azureArtifacts);
     }
 
     var safeToInstall = true;
-    if (!ignoreSafetyCheck(packageName) && channel == "master") {
+    if (!skipRunningPackagesCheck(packageName, channel)) {
         // Check if running workflows have packages that need to be installed
         const runningPackages = await getAllRunningPackages();
         console.log("Running packages: " + runningPackages.join(", "));
