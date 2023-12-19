@@ -205,7 +205,7 @@ async function run(packageName, azureArtifacts, extraArgs, channel) {
     const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
-        // installPackages(numaflowPackages, extraArgs, azureArtifacts);
+        installPackages(numaflowPackages, extraArgs, azureArtifacts);
     }
 
     var safeToInstall = true;
