@@ -189,16 +189,11 @@ function installPackages(packages, extraArgs, azureArtifacts) {
     }
 }
 
-async function run(packageName, azureArtifacts, extraArgs, channel) {
+async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel) {
     const packagesMap = getAllPackagesMap();
     const installedPackages = await getInstalledPackages();
 
-    var skipVersionCheck = true;
-    if (channel == "master") {
-        skipVersionCheck = false;
-    }
-
-    const packagesToInstall = getPackagesToInstall(packageName, packagesMap, installedPackages, skipVersionCheck);
+    const packagesToInstall = getPackagesToInstall(packageName, packagesMap, installedPackages, bypassSafetyCheck);
     console.log(
         "Packages to install: " +
             Array.from(packagesToInstall)
@@ -250,7 +245,8 @@ async function run(packageName, azureArtifacts, extraArgs, channel) {
 const marketplacePackagesPath = process.argv[2];
 const packageName = process.argv[3];
 const azureArtifacts = process.argv[4];
-const extraArgs = process.argv[5];
-const channel = process.argv[6];
+const bypassSafetyCheck = process.argv[5];
+const extraArgs = process.argv[6];
+const channel = process.argv[7];
 
-run(packageName, azureArtifacts, extraArgs, channel);
+run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel);
