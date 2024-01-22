@@ -193,7 +193,9 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
     const packagesMap = getAllPackagesMap();
     const installedPackages = await getInstalledPackages();
 
-    const packagesToInstall = getPackagesToInstall(packageName, packagesMap, installedPackages, bypassSafetyCheck);
+    const skipVersionCheck = bypassSafetyCheck === "true";
+
+    const packagesToInstall = getPackagesToInstall(packageName, packagesMap, installedPackages, skipVersionCheck);
     console.log(
         "Packages to install: " +
             Array.from(packagesToInstall)
