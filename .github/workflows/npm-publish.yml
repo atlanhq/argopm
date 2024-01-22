@@ -52,7 +52,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/atlanhq/${{ github.event.repository.name }}:v0.10.6
+            ghcr.io/atlanhq/${{ github.event.repository.name }}:v0.10.7
           build-args: |
             ACCESS_TOKEN_USR=$GITHUB_ACTOR
             ACCESS_TOKEN_PWD=${{ secrets.MY_PAT }}

@@ -9,11 +9,11 @@ const { exit } = require("process");
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
 
-function skipRunningPackagesCheck(packageName, channel) {
+function skipRunningPackagesCheck(packageName, bypassSafetyCheck) {
     /**
      * Check if the last safe release was more than 24 hours ago. If not prevent safety check install.
      */
-    if (channel != "master") {
+    if (bypassSafetyCheck) {
         return true;
     }
 
@@ -193,9 +193,7 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
     const packagesMap = getAllPackagesMap();
     const installedPackages = await getInstalledPackages();
 
-    const skipVersionCheck = bypassSafetyCheck === "true";
-
-    const packagesToInstall = getPackagesToInstall(packageName, packagesMap, installedPackages, skipVersionCheck);
+    const packagesToInstall = getPackagesToInstall(packageName, packagesMap, installedPackages, bypassSafetyCheck);
     console.log(
         "Packages to install: " +
             Array.from(packagesToInstall)
@@ -211,7 +209,7 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
     }
 
     var safeToInstall = true;
-    if (!skipRunningPackagesCheck(packageName, channel)) {
+    if (!skipRunningPackagesCheck(packageName, bypassSafetyCheck)) {
         // Check if running workflows have packages that need to be installed
         const runningPackages = await getAllRunningPackages();
         console.log("Running packages: " + runningPackages.join(", "));
@@ -247,8 +245,10 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
 const marketplacePackagesPath = process.argv[2];
 const packageName = process.argv[3];
 const azureArtifacts = process.argv[4];
-const bypassSafetyCheck = process.argv[5];
+const bypassSafetyCheckString = process.argv[5];
 const extraArgs = process.argv[6];
 const channel = process.argv[7];
+
+const bypassSafetyCheck = bypassSafetyCheckString === "true";
 
 run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel);
