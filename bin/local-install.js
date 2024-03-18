@@ -225,7 +225,9 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
 
     if (!safeToInstall) {
         console.warn("Not safe to install. Waiting for running workflows to complete before installing packages.");
-        exit(1);
+        // use custom exit code 100 to bypass workflow failure
+        // choose code 100 to avoid collision https://node.readthedocs.io/en/latest/api/process/
+        exit(100);
     }
 
     // Install packages
