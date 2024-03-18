@@ -1,4 +1,4 @@
-FROM node:14-alpine
+FROM node:20-alpine
 
 RUN mkdir /app
 
@@ -6,6 +6,8 @@ WORKDIR /app
 
 COPY . /app
 
-RUN npm link
+RUN npm install argopm -g
+
+RUN npm install
 
 ENTRYPOINT ["argopm"]
