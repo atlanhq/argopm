@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: workflow-template-hello-world-
+spec:
+  entrypoint: whalesay
+  templates:
+    - name: whalesay
+      dag:
+        tasks:
+          - name: call-whalesay-template
+            templateRef:
+              name: workflow-template-whalesay-template
+              template: whalesay-template

@@ -1,6 +1,6 @@
 {
   "name": "argopm",
-  "version": "0.10.0",
+  "version": "0.10.11",
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
@@ -36,7 +36,8 @@
     "jest": "^27.4.6",
     "lint-staged": "^12.1.5",
     "pre-commit": "^1.2.2",
-    "prettier": "^2.5.1"
+    "prettier": "^2.5.1",
+    "rewire": "^7.0.0"
   },
   "lint-staged": {
     "*.js": [
