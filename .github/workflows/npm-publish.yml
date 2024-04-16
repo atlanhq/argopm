@@ -2,7 +2,6 @@ name: npm-publish
 on:
   push:
     branches:
-      - feat/local-install
       - master
 jobs:
   npm-publish:
@@ -52,7 +51,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/atlanhq/${{ github.event.repository.name }}:v0.10.9
+            ghcr.io/atlanhq/${{ github.event.repository.name }}:latest
+            ghcr.io/atlanhq/${{ github.event.repository.name }}:${{ steps.previoustag.outputs.tag }}
           build-args: |
             ACCESS_TOKEN_USR=$GITHUB_ACTOR
             ACCESS_TOKEN_PWD=${{ secrets.MY_PAT }}
