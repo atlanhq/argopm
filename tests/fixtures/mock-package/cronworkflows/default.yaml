@@ -3,6 +3,8 @@ apiVersion: argoproj.io/v1alpha1
 kind: CronWorkflow
 metadata:
   name: argopm-mock-package-delete-me-cronworkflow
+  labels:
+    package: whalesay
 spec:
   schedule: "* * * * *"
   startingDeadlineSeconds: 0
