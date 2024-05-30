@@ -51,13 +51,11 @@ describe("copyPackageInfoToPodMetaData", () => {
         expect(result.metadata.labels).toEqual({
             "package.argoproj.io/version": "0.34.217",
         });
-        expect(result.spec.podMetadata.labels).toEqual({
-            "package.argoproj.io/version": "0.34.217",
-        });
         expect(result.metadata.annotations).toEqual({
             "package.argoproj.io/name": "whalesay",
         });
         expect(result.spec.podMetadata.annotations).toEqual({
+            "package.argoproj.io/version": "0.34.217",
             "package.argoproj.io/name": "whalesay",
         });
     });
