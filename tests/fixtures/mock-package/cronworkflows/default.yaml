@@ -4,7 +4,9 @@ kind: CronWorkflow
 metadata:
   name: argopm-mock-package-delete-me-cronworkflow
   labels:
-    package: whalesay
+    package.argoproj.io/version: 0.34.217
+  annotations:
+    package.argoproj.io/name: whalesay
 spec:
   schedule: "* * * * *"
   startingDeadlineSeconds: 0
@@ -18,5 +20,5 @@ spec:
       - name: whalesay
         container:
           image: alpine:3.6
-          command: [sh, -c]
-          args: ["date; sleep 90"]
+          command: [ sh, -c ]
+          args: [ "date; sleep 90" ]
