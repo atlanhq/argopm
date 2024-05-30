@@ -4,7 +4,7 @@ const rewire = require("rewire");
 
 const k8s = rewire("../lib/k8s.js");
 const enableClusterScope = k8s.__get__("enableClusterScope");
-const copyLabelsToPodMetaData = k8s.__get__("copyLabelsToPodMetaData");
+const copyLabelsToPodMetaData = k8s.__get__("copyPackageInfoToPodMetaData");
 
 describe("verify enableClusterScope", () => {
     test("assert cluster scope enabled in dag", () => {
@@ -38,7 +38,7 @@ describe("verify enableClusterScope", () => {
     });
 });
 
-describe("copyLabelsToPodMetaData", () => {
+describe("copyPackageInfoToPodMetaData", () => {
     test("should add labels to yamlObject", () => {
         const kind = "WorkflowTemplate";
         const yamlObject = yaml.load(
@@ -49,10 +49,16 @@ describe("copyLabelsToPodMetaData", () => {
 
         // Assertions
         expect(result.metadata.labels).toEqual({
-            package: "whalesay",
+            "package.argoproj.io/version": "0.34.217",
         });
         expect(result.spec.podMetadata.labels).toEqual({
-            package: "whalesay",
+            "package.argoproj.io/version": "0.34.217",
+        });
+        expect(result.metadata.annotations).toEqual({
+            "package.argoproj.io/name": "whalesay",
+        });
+        expect(result.spec.podMetadata.annotations).toEqual({
+            "package.argoproj.io/name": "whalesay",
         });
     });
 
