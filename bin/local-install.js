@@ -172,18 +172,15 @@ function getConnectorPackages() {
     //If changes for canary are present in canary deployment, and the crawler is running, then we have to stop installation of @atlan/connectors package
     //Hence if any of these are running, we have to skip the installation of @atlan/connectors package.
 
-    //Read all the connector names from the configMaps directory
-    const connectors = fs
-        .readdirSync(path.join(marketplacePackagesPath, 'packages', 'atlan', 'connectors', 'configMaps'))
-        .filter((file) => file.endsWith(".yaml"))
-        .map(file => file.split('.yaml')[0]);
-
-    //Read all the packages for the connectors
+    //Read all the packages
+    //Check for isVerified, isCertified
+    //Check for type miner, utility and return for custom, connectors etc.
     const packages = fs
         .readdirSync(marketplacePackagesPath, { recursive: true, withFileTypes: false })
         .filter(file => file.endsWith("package.json"))
-        .filter(file => connectors.some(connector => path.basename(path.dirname(file)) === connector))
         .map(file => JSON.parse(fs.readFileSync(path.join(marketplacePackagesPath, file), "utf-8")))
+        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/verified'] == 'true' || pkg.config?.labels?.['orchestration.atlan.com/certified'] == true)
+        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'miner' && pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'utility' )
         .map(pkg => pkg.name);
 
     return packages;
