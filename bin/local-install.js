@@ -179,7 +179,7 @@ function getConnectorPackages() {
         .readdirSync(marketplacePackagesPath, { recursive: true, withFileTypes: false })
         .filter(file => file.endsWith("package.json"))
         .map(file => JSON.parse(fs.readFileSync(path.join(marketplacePackagesPath, file), "utf-8")))
-        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/verified'] == 'true' && pkg.config?.labels?.['orchestration.atlan.com/certified'] == 'true')
+        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/verified'] === 'true' && pkg.config?.labels?.['orchestration.atlan.com/certified'] === 'true')
         .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'miner' && pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'utility' )
         .map(pkg => pkg.name);
 
