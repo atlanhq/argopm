@@ -19,7 +19,7 @@ available for AWS S3)
 
 ### Prerequisites
 
--   Node.js `> v16.9.0`
+-   Node.js `> v18.20.3`
 
 ### Installation
 
