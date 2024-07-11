@@ -179,7 +179,7 @@ function getConnectorPackages() {
         .readdirSync(marketplacePackagesPath, { recursive: true, withFileTypes: false })
         .filter(file => file.endsWith("package.json"))
         .map(file => JSON.parse(fs.readFileSync(path.join(marketplacePackagesPath, file), "utf-8")))
-        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/verified'] === 'true' && pkg.config?.labels?.['orchestration.atlan.com/certified'] === 'true')
+        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/certified'] === 'true')
         .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'miner' && pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'utility' )
         .map(pkg => pkg.name);
 
@@ -222,7 +222,7 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
 
     // Always install numaflow packages since delete-pipelines may have deleted them
     const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
-    const connectorPackages = [...packagesToInstall].includes("@atlan/connectors") ? getConnectorPackages() : [];
+    const connectorPackages = [...packagesToInstall].find((pkg)=> "@atlan/connectors" === pkg.name ) ? getConnectorPackages() : [];
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
         installPackages(numaflowPackages, extraArgs, azureArtifacts);
