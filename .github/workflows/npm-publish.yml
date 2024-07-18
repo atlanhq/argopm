@@ -41,7 +41,7 @@ jobs:
         with:
           registry: ghcr.io
           username: $GITHUB_ACTOR
-          password: ${{ secrets.MY_PAT }}
+          password: ${{ secrets.ORG_PAT_GITHUB }}
       
       - name: Build and push docker image
         id: docker_build
@@ -55,4 +55,4 @@ jobs:
             ghcr.io/atlanhq/${{ github.event.repository.name }}:${{ steps.previoustag.outputs.tag }}
           build-args: |
             ACCESS_TOKEN_USR=$GITHUB_ACTOR
-            ACCESS_TOKEN_PWD=${{ secrets.MY_PAT }}
+            ACCESS_TOKEN_PWD=${{ secrets.ORG_PAT_GITHUB }}
