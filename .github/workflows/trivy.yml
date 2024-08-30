@@ -40,7 +40,7 @@ jobs:
         with:
           image-ref: 'docker.io/atlanhq/argopm:${{ github.sha }}'
           format: 'table'
-          severity: 'CRITICAL,HIGH'
+          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
 
       - name: Generate trivy results for GitHub Security tab
         uses: aquasecurity/trivy-action@0.24.0
