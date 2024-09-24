@@ -130,7 +130,7 @@ async function getInstalledPackages() {
     return installedPackages;
 }
 
-function getPackagesToInstall(packageName, packagesMap, installedPackages, skipVersionCheck) {
+function getPackagesToInstall(packageName, packagesMap, installedPackages, skipVersionCheck, temporaryInstall) {
     /**
      * Returns a list of all packages that need to be installed
      */
@@ -141,10 +141,22 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
     }
 
     for (const dependency of Object.keys(package.dependencies)) {
-        const dependencyPackage = packagesMap[dependency];
+        let dependencyPackage = packagesMap[dependency];
         if (!dependencyPackage) {
             throw new Error(`Dependency ${dependency} not found`);
         }
+
+        const temporaryInstallSuffix = "-temp";
+        if (temporaryInstall) {
+            if (!dependencyPackage.version.endsWith(temporaryInstallSuffix)) {
+                dependencyPackage["version"] = dependencyPackage["version"] + temporaryInstallSuffix;
+            }
+            packagesToInstall.add(dependencyPackage);
+        } else if (dependencyPackage.version.endsWith(temporaryInstallSuffix)) {
+            dependencyPackage["version"] = dependencyPackage["version"].slice(0, -temporaryInstallSuffix.length);
+            packagesToInstall.add(dependencyPackage);
+        }
+        console.log(dependencyPackage);
 
         if (!installedPackages[dependencyPackage.name] || dependencyPackage.isNumaflowPackage) {
             packagesToInstall.add(dependencyPackage);
@@ -159,7 +171,8 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
                 dependency,
                 packagesMap,
                 installedPackages,
-                skipVersionCheck
+                skipVersionCheck,
+                temporaryInstall
             );
             packagesToInstall = new Set([...packagesToInstall, ...dependencyPackagesToInstall]);
         }
@@ -177,11 +190,15 @@ function getConnectorPackages() {
     //Check for type miner, utility and return for custom, connectors etc.
     const packages = fs
         .readdirSync(marketplacePackagesPath, { recursive: true, withFileTypes: false })
-        .filter(file => file.endsWith("package.json"))
-        .map(file => JSON.parse(fs.readFileSync(path.join(marketplacePackagesPath, file), "utf-8")))
-        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/certified'] === 'true')
-        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'miner' && pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'utility' )
-        .map(pkg => pkg.name);
+        .filter((file) => file.endsWith("package.json"))
+        .map((file) => JSON.parse(fs.readFileSync(path.join(marketplacePackagesPath, file), "utf-8")))
+        .filter((pkg) => pkg.config?.labels?.["orchestration.atlan.com/certified"] === "true")
+        .filter(
+            (pkg) =>
+                pkg.config?.labels?.["orchestration.atlan.com/type"] !== "miner" &&
+                pkg.config?.labels?.["orchestration.atlan.com/type"] !== "utility"
+        )
+        .map((pkg) => pkg.name);
 
     return packages;
 }
@@ -208,11 +225,17 @@ function installPackages(packages, extraArgs, azureArtifacts) {
     }
 }
 
-async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel) {
+async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel, temporaryInstall) {
     const packagesMap = getAllPackagesMap();
     const installedPackages = await getInstalledPackages();
 
-    const packagesToInstall = getPackagesToInstall(packageName, packagesMap, installedPackages, bypassSafetyCheck);
+    const packagesToInstall = getPackagesToInstall(
+        packageName,
+        packagesMap,
+        installedPackages,
+        bypassSafetyCheck,
+        temporaryInstall
+    );
     console.log(
         "Packages to install: " +
             Array.from(packagesToInstall)
@@ -222,7 +245,9 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
 
     // Always install numaflow packages since delete-pipelines may have deleted them
     const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
-    const connectorPackages = [...packagesToInstall].find((pkg)=> "@atlan/connectors" === pkg.name ) ? getConnectorPackages() : [];
+    const connectorPackages = [...packagesToInstall].find((pkg) => "@atlan/connectors" === pkg.name)
+        ? getConnectorPackages()
+        : [];
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
         installPackages(numaflowPackages, extraArgs, azureArtifacts);
@@ -239,10 +264,12 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
                 safeToInstall = false;
                 break;
             }
-            if(connectorPackages.includes(runningPackage)){
+            if (connectorPackages.includes(runningPackage)) {
                 //If any of the connector packages are running, then we have to skip the installation of @atlan/connectors package.
                 safeToInstall = false;
-                console.log(`Connector package ${runningPackage} is running. Skipping installation of @atlan/connectors package`);
+                console.log(
+                    `Connector package ${runningPackage} is running. Skipping installation of @atlan/connectors package`
+                );
                 break;
             }
         }
@@ -276,7 +303,9 @@ const azureArtifacts = process.argv[4];
 const bypassSafetyCheckString = process.argv[5];
 const extraArgs = process.argv[6];
 const channel = process.argv[7];
+const temporaryInstallString = process.argv[8];
 
 const bypassSafetyCheck = bypassSafetyCheckString === "true";
+const temporaryInstall = temporaryInstallString === "true";
 
-run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel);
+run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel, temporaryInstall);
