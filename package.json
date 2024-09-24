@@ -1,6 +1,6 @@
 {
   "name": "argopm",
-  "version": "0.10.16",
+  "version": "0.10.17",
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
@@ -13,7 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.637.0",
-    "@kubernetes/client-node": "^0.20.0",
+    "@kubernetes/client-node": "^0.16.3",
     "ansicolor": "^1.1.95",
     "as-table": "^1.0.55",
     "axios": "^0.28.1",
