@@ -140,23 +140,23 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
         throw new Error(`Package ${packageName} not found`);
     }
 
+    const temporaryInstallSuffix = "-temp";
+
     for (const dependency of Object.keys(package.dependencies)) {
         let dependencyPackage = packagesMap[dependency];
         if (!dependencyPackage) {
             throw new Error(`Dependency ${dependency} not found`);
         }
 
-        const temporaryInstallSuffix = "-temp";
         if (temporaryInstall) {
+            packagesToInstall.add(dependencyPackage);
             if (!dependencyPackage.version.endsWith(temporaryInstallSuffix)) {
-                dependencyPackage["version"] = dependencyPackage["version"] + temporaryInstallSuffix;
+                dependencyPackage.version = dependencyPackage.version + temporaryInstallSuffix;
             }
-            packagesToInstall.add(dependencyPackage);
         } else if (dependencyPackage.version.endsWith(temporaryInstallSuffix)) {
-            dependencyPackage["version"] = dependencyPackage["version"].slice(0, -temporaryInstallSuffix.length);
             packagesToInstall.add(dependencyPackage);
+            dependencyPackage.version = dependencyPackage.version.slice(0, -temporaryInstallSuffix.length);
         }
-        console.log(dependencyPackage);
 
         if (!installedPackages[dependencyPackage.name] || dependencyPackage.isNumaflowPackage) {
             packagesToInstall.add(dependencyPackage);
@@ -212,6 +212,7 @@ function installPackages(packages, extraArgs, azureArtifacts) {
         const packageJSONPath = path.join(pkg.path, "package.json");
         const packageJSON = JSON.parse(fs.readFileSync(packageJSONPath, "utf-8"));
         packageJSON.dependencies = {};
+        packageJSON.version = pkg.version;
 
         // Write back package.json
         fs.writeFileSync(packageJSONPath, JSON.stringify(packageJSON, null, 2));
@@ -287,7 +288,7 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
     const argoPackages = [...packagesToInstall].filter((pkg) => !pkg.isNumaflowPackage);
     console.log("Argo packages to install: " + argoPackages.map((pkg) => pkg.name).join(", "));
 
-    installPackages(argoPackages, extraArgs, azureArtifacts);
+    installPackages(argoPackages, extraArgs, azureArtifacts, temporaryInstall);
 
     // Write last safe release
     fs.writeFileSync(
@@ -303,6 +304,10 @@ const azureArtifacts = process.argv[4];
 const bypassSafetyCheckString = process.argv[5];
 const extraArgs = process.argv[6];
 const channel = process.argv[7];
+// Temporary install enables package install regardless of version upgrade
+// It respects bypassSafetyCheck
+// The first local-install run after a run with temporaryInstall enabled
+// will install packages regardless of version upgrade, this helps to reset the package
 const temporaryInstallString = process.argv[8];
 
 const bypassSafetyCheck = bypassSafetyCheckString === "true";
