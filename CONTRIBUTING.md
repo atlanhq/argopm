@@ -25,6 +25,12 @@ npm install
 4. You may merge the Pull Request in once you have the sign-off of two other developers, or if you
    do not have permission to do that, you may request the second reviewer to merge it for you.
 
+## Release
+
+To release the changes to a newer version, developer needs to
+- Increment version in [package.json](package.json)
+- Include a commit message in the form of `Release x.xx.xx`
+
 ## Code of Conduct
 
 ### Our Pledge
