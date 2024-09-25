@@ -130,7 +130,7 @@ async function getInstalledPackages() {
     return installedPackages;
 }
 
-function getPackagesToInstall(packageName, packagesMap, installedPackages, skipVersionCheck, temporaryInstall) {
+function getPackagesToInstall(packageName, packagesMap, installedPackages, skipVersionCheck, snapshotInstall) {
     /**
      * Returns a list of all packages that need to be installed
      */
@@ -140,7 +140,7 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
         throw new Error(`Package ${packageName} not found`);
     }
 
-    const temporaryInstallSuffix = "-temp";
+    const snapshotInstallSuffix = "-snapshot";
 
     for (const dependency of Object.keys(package.dependencies)) {
         let dependencyPackage = packagesMap[dependency];
@@ -148,9 +148,9 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
             throw new Error(`Dependency ${dependency} not found`);
         }
 
-        if (temporaryInstall) {
-            if (!dependencyPackage.version.endsWith(temporaryInstallSuffix)) {
-                dependencyPackage.version = dependencyPackage.version + temporaryInstallSuffix;
+        if (snapshotInstall) {
+            if (!dependencyPackage.version.endsWith(snapshotInstallSuffix)) {
+                dependencyPackage.version = dependencyPackage.version + snapshotInstallSuffix;
             }
             packagesToInstall.add(dependencyPackage);
         }
@@ -169,7 +169,7 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
                 packagesMap,
                 installedPackages,
                 skipVersionCheck,
-                temporaryInstall
+                snapshotInstall
             );
             packagesToInstall = new Set([...packagesToInstall, ...dependencyPackagesToInstall]);
         }
@@ -223,7 +223,7 @@ function installPackages(packages, extraArgs, azureArtifacts) {
     }
 }
 
-async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel, temporaryInstall) {
+async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel, snapshotInstall) {
     const packagesMap = getAllPackagesMap();
     const installedPackages = await getInstalledPackages();
 
@@ -232,7 +232,7 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
         packagesMap,
         installedPackages,
         bypassSafetyCheck,
-        temporaryInstall
+        snapshotInstall
     );
     console.log(
         "Packages to install: " +
@@ -285,7 +285,7 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
     const argoPackages = [...packagesToInstall].filter((pkg) => !pkg.isNumaflowPackage);
     console.log("Argo packages to install: " + argoPackages.map((pkg) => pkg.name).join(", "));
 
-    installPackages(argoPackages, extraArgs, azureArtifacts, temporaryInstall);
+    installPackages(argoPackages, extraArgs, azureArtifacts, snapshotInstall);
 
     // Write last safe release
     fs.writeFileSync(
@@ -301,13 +301,11 @@ const azureArtifacts = process.argv[4];
 const bypassSafetyCheckString = process.argv[5];
 const extraArgs = process.argv[6];
 const channel = process.argv[7];
-// Temporary install enables package install regardless of version upgrade
-// It respects bypassSafetyCheck, and added a -temp suffix to the version
-// For a local-install that doesn't have temporaryInstall enabled,
-// any temporary packages will get overwritten regardless of version upgrade, this helps to reset the package
-const temporaryInstallString = process.argv[8];
+// snapshotInstall install package regardless of package version
+// It respects bypassSafetyCheck, and added a -snapshot suffix to the version
+const snapshotInstallString = process.argv[8];
 
 const bypassSafetyCheck = bypassSafetyCheckString === "true";
-const temporaryInstall = temporaryInstallString === "true";
+const snapshotInstall = snapshotInstallString === "true";
 
-run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel, temporaryInstall);
+run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel, snapshotInstall);
