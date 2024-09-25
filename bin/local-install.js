@@ -130,7 +130,7 @@ async function getInstalledPackages() {
     return installedPackages;
 }
 
-function getPackagesToInstall(packageName, packagesMap, installedPackages, skipVersionCheck) {
+function getPackagesToInstall(packageName, packagesMap, installedPackages, skipVersionCheck, snapshotInstall) {
     /**
      * Returns a list of all packages that need to be installed
      */
@@ -140,10 +140,19 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
         throw new Error(`Package ${packageName} not found`);
     }
 
+    const snapshotInstallSuffix = "-snapshot";
+
     for (const dependency of Object.keys(package.dependencies)) {
-        const dependencyPackage = packagesMap[dependency];
+        let dependencyPackage = packagesMap[dependency];
         if (!dependencyPackage) {
             throw new Error(`Dependency ${dependency} not found`);
+        }
+
+        if (snapshotInstall) {
+            if (!dependencyPackage.version.endsWith(snapshotInstallSuffix)) {
+                dependencyPackage.version = dependencyPackage.version + snapshotInstallSuffix;
+            }
+            packagesToInstall.add(dependencyPackage);
         }
 
         if (!installedPackages[dependencyPackage.name] || dependencyPackage.isNumaflowPackage) {
@@ -159,7 +168,8 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
                 dependency,
                 packagesMap,
                 installedPackages,
-                skipVersionCheck
+                skipVersionCheck,
+                snapshotInstall
             );
             packagesToInstall = new Set([...packagesToInstall, ...dependencyPackagesToInstall]);
         }
@@ -177,11 +187,15 @@ function getConnectorPackages() {
     //Check for type miner, utility and return for custom, connectors etc.
     const packages = fs
         .readdirSync(marketplacePackagesPath, { recursive: true, withFileTypes: false })
-        .filter(file => file.endsWith("package.json"))
-        .map(file => JSON.parse(fs.readFileSync(path.join(marketplacePackagesPath, file), "utf-8")))
-        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/certified'] === 'true')
-        .filter(pkg => pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'miner' && pkg.config?.labels?.['orchestration.atlan.com/type'] !== 'utility' )
-        .map(pkg => pkg.name);
+        .filter((file) => file.endsWith("package.json"))
+        .map((file) => JSON.parse(fs.readFileSync(path.join(marketplacePackagesPath, file), "utf-8")))
+        .filter((pkg) => pkg.config?.labels?.["orchestration.atlan.com/certified"] === "true")
+        .filter(
+            (pkg) =>
+                pkg.config?.labels?.["orchestration.atlan.com/type"] !== "miner" &&
+                pkg.config?.labels?.["orchestration.atlan.com/type"] !== "utility"
+        )
+        .map((pkg) => pkg.name);
 
     return packages;
 }
@@ -195,6 +209,7 @@ function installPackages(packages, extraArgs, azureArtifacts) {
         const packageJSONPath = path.join(pkg.path, "package.json");
         const packageJSON = JSON.parse(fs.readFileSync(packageJSONPath, "utf-8"));
         packageJSON.dependencies = {};
+        packageJSON.version = pkg.version;
 
         // Write back package.json
         fs.writeFileSync(packageJSONPath, JSON.stringify(packageJSON, null, 2));
@@ -208,11 +223,17 @@ function installPackages(packages, extraArgs, azureArtifacts) {
     }
 }
 
-async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel) {
+async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel, snapshotInstall) {
     const packagesMap = getAllPackagesMap();
     const installedPackages = await getInstalledPackages();
 
-    const packagesToInstall = getPackagesToInstall(packageName, packagesMap, installedPackages, bypassSafetyCheck);
+    const packagesToInstall = getPackagesToInstall(
+        packageName,
+        packagesMap,
+        installedPackages,
+        bypassSafetyCheck,
+        snapshotInstall
+    );
     console.log(
         "Packages to install: " +
             Array.from(packagesToInstall)
@@ -222,7 +243,9 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
 
     // Always install numaflow packages since delete-pipelines may have deleted them
     const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
-    const connectorPackages = [...packagesToInstall].find((pkg)=> "@atlan/connectors" === pkg.name ) ? getConnectorPackages() : [];
+    const connectorPackages = [...packagesToInstall].find((pkg) => "@atlan/connectors" === pkg.name)
+        ? getConnectorPackages()
+        : [];
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
         installPackages(numaflowPackages, extraArgs, azureArtifacts);
@@ -239,10 +262,12 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
                 safeToInstall = false;
                 break;
             }
-            if(connectorPackages.includes(runningPackage)){
+            if (connectorPackages.includes(runningPackage)) {
                 //If any of the connector packages are running, then we have to skip the installation of @atlan/connectors package.
                 safeToInstall = false;
-                console.log(`Connector package ${runningPackage} is running. Skipping installation of @atlan/connectors package`);
+                console.log(
+                    `Connector package ${runningPackage} is running. Skipping installation of @atlan/connectors package`
+                );
                 break;
             }
         }
@@ -260,7 +285,7 @@ async function run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, ch
     const argoPackages = [...packagesToInstall].filter((pkg) => !pkg.isNumaflowPackage);
     console.log("Argo packages to install: " + argoPackages.map((pkg) => pkg.name).join(", "));
 
-    installPackages(argoPackages, extraArgs, azureArtifacts);
+    installPackages(argoPackages, extraArgs, azureArtifacts, snapshotInstall);
 
     // Write last safe release
     fs.writeFileSync(
@@ -276,7 +301,11 @@ const azureArtifacts = process.argv[4];
 const bypassSafetyCheckString = process.argv[5];
 const extraArgs = process.argv[6];
 const channel = process.argv[7];
+// snapshotInstall install package regardless of package version
+// It respects bypassSafetyCheck, and added a -snapshot suffix to the version
+const snapshotInstallString = process.argv[8];
 
 const bypassSafetyCheck = bypassSafetyCheckString === "true";
+const snapshotInstall = snapshotInstallString === "true";
 
-run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel);
+run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel, snapshotInstall);
