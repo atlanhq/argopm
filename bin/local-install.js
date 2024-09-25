@@ -149,13 +149,10 @@ function getPackagesToInstall(packageName, packagesMap, installedPackages, skipV
         }
 
         if (temporaryInstall) {
-            packagesToInstall.add(dependencyPackage);
             if (!dependencyPackage.version.endsWith(temporaryInstallSuffix)) {
                 dependencyPackage.version = dependencyPackage.version + temporaryInstallSuffix;
             }
-        } else if (dependencyPackage.version.endsWith(temporaryInstallSuffix)) {
             packagesToInstall.add(dependencyPackage);
-            dependencyPackage.version = dependencyPackage.version.slice(0, -temporaryInstallSuffix.length);
         }
 
         if (!installedPackages[dependencyPackage.name] || dependencyPackage.isNumaflowPackage) {
