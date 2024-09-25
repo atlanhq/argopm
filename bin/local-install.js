@@ -305,9 +305,9 @@ const bypassSafetyCheckString = process.argv[5];
 const extraArgs = process.argv[6];
 const channel = process.argv[7];
 // Temporary install enables package install regardless of version upgrade
-// It respects bypassSafetyCheck
-// The first local-install run after a run with temporaryInstall enabled
-// will install packages regardless of version upgrade, this helps to reset the package
+// It respects bypassSafetyCheck, and added a -temp suffix to the version
+// For a local-install that doesn't have temporaryInstall enabled,
+// any temporary packages will get overwritten regardless of version upgrade, this helps to reset the package
 const temporaryInstallString = process.argv[8];
 
 const bypassSafetyCheck = bypassSafetyCheckString === "true";
