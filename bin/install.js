@@ -58,6 +58,11 @@ yargs
                         "Print JSON-formatted dependency graph of packages to be installed without actually installing them",
                     default: false,
                 })
+                .option("export-package-names", {
+                    type: "string",
+                    description: "export installed packages to a file",
+                    default: "",
+                })
                 .option("azure", {
                     alias: "az",
                     type: "boolean",
@@ -71,6 +76,7 @@ yargs
                 timeZone: argv["tz"],
                 preview: argv["p"],
                 azure: argv["az"],
+                exportPackageNameFilePath: argv["export-package-names"],
             };
             if (argv.global) {
                 return installGlobal(argv.package, argv.registry, argv.namespace, argv.cluster, options).then(
