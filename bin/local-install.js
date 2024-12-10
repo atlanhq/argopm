@@ -230,18 +230,22 @@ async function run(
     extraArgs,
     channel,
     snapshotInstall,
-    skipVersionCheck
+    skipVersionCheck,
+    skipPackages
 ) {
     const packagesMap = getAllPackagesMap();
     const installedPackages = await getInstalledPackages();
 
-    const packagesToInstall = getPackagesToInstall(
+    const initPackagesToInstall = getPackagesToInstall(
         packageName,
         packagesMap,
         installedPackages,
         skipVersionCheck,
         snapshotInstall
     );
+    const skipPackagesArray = JSON.parse("[" + skipPackages + "]");
+    const packagesToInstall = initPackagesToInstall.removeAll(skipPackagesArray);
+    console.log("Packages skipped install: " + skipPackages);
     console.log(
         "Packages to install: " +
             Array.from(packagesToInstall)
@@ -313,9 +317,19 @@ const channel = process.argv[7];
 // It respects bypassSafetyCheck, and added a -snapshot suffix to the version
 const snapshotInstallString = process.argv[8];
 const skipVersionCheckString = process.argv[9];
+const skipPackages = process.argv[10];
 
 const bypassSafetyCheck = bypassSafetyCheckString === "true";
 const snapshotInstall = snapshotInstallString === "true";
 const skipVersionCheck = skipVersionCheckString === "true";
 
-run(packageName, azureArtifacts, bypassSafetyCheck, extraArgs, channel, snapshotInstall, skipVersionCheck);
+run(
+    packageName,
+    azureArtifacts,
+    bypassSafetyCheck,
+    extraArgs,
+    channel,
+    snapshotInstall,
+    skipVersionCheck,
+    skipPackages
+);
