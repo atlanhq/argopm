@@ -243,11 +243,15 @@ async function run(
         skipVersionCheck,
         snapshotInstall
     );
-    const skipPackagesArray = JSON.parse(skipPackages)
-        .map((item) => item.split(","))
-        .flat();
-    const packagesToInstall = initPackagesToInstall.removeAll(skipPackagesArray);
-    console.log("Packages skipped install: " + skipPackages);
+    const skipPackagesArray = Array.from(
+        JSON.parse(skipPackages)
+            .map((item) => item.split(","))
+            .flat()
+    );
+    const packagesToInstall = Array.from(initPackagesToInstall).filter(
+        (item) => !skipPackagesArray.includes(item.name)
+    );
+    console.log("Packages skipped install: " + skipPackagesArray);
     console.log(
         "Packages to install: " +
             Array.from(packagesToInstall)
