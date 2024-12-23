@@ -27,6 +27,14 @@ jobs:
       - uses: actions/checkout@v2.2.0
         with:
           fetch-depth: 0
+      - name: Get published version
+        id: get_version
+        run: |
+          ARGOPM_VERSION=$(npm show . version)
+          echo "The published version is: $ARGOPM_VERSION"
+          echo "::set-output name=argopm_version::$ARGOPM_VERSION"
+          # sleep 5 sec to make sure we can install the latest published version from npm in Dockerfile
+          sleep 5
       - name: 'Get Previous tag'
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@master"
@@ -56,3 +64,4 @@ jobs:
           build-args: |
             ACCESS_TOKEN_USR=$GITHUB_ACTOR
             ACCESS_TOKEN_PWD=${{ secrets.ORG_PAT_GITHUB }}
+            ARGOPM_VERSION=${{ steps.get_version.outputs.published_version }}
