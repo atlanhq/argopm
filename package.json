@@ -13,7 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.637.0",
-    "@kubernetes/client-node": "^0.16.3",
+    "@kubernetes/client-node": "^1.0.0",
     "ansicolor": "^1.1.95",
     "as-table": "^1.0.55",
     "axios": "^0.28.1",
