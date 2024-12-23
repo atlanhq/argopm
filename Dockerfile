@@ -6,8 +6,6 @@ WORKDIR /app
 
 COPY . /app
 
-RUN npm install argopm -g
-
-RUN npm install
+RUN npm install && npm install . -g 
 
 ENTRYPOINT ["argopm"]
