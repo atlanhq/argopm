@@ -112,7 +112,5 @@ Refer to [CONTRIBUTING.md](/CONTRIBUTING.md) for more information on contributin
 The project is licensed under the MIT License, see the [LICENSE](LICENSE) file for details.
 
 ## Discussion and Support
-
--   Q&A: [Github Discussions](https://github.com/atlanhq/argopm/discussions)
--   You can also reach out to engineering@atlan.com
+-   For any questions please reach out to engineering@atlan.com
 
