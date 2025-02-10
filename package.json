@@ -35,7 +35,6 @@
     "eslint-plugin-jest": "^25.3.4",
     "jest": "^27.4.6",
     "lint-staged": "^12.1.5",
-    "pre-commit": "^1.2.2",
     "prettier": "^2.5.1",
     "rewire": "^7.0.0"
   },
