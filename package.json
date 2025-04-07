@@ -1,6 +1,6 @@
 {
   "name": "argopm",
-  "version": "0.10.22",
+  "version": "0.10.23",
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
