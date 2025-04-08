@@ -3,49 +3,64 @@ const path = require("path");
 const execSync = require("child_process").execSync;
 const { getPackagesToInstall, getInstalledPackages, getAllPackagesMap } = require("../lib/local-install-util");
 
-function installPackages(packages, extraArgs, azureArtifacts, outputPath = "") {
-    const installedNames = []; // Track installed package names for output
+//  New helper function to handle writing to file
+function writeInstalledPackagesToFile(installedNames, outputPath) {
+    if (!outputPath || installedNames.length === 0) return;
+
+    try {
+        const outDir = path.dirname(outputPath);
+        fs.mkdirSync(outDir, { recursive: true });
+
+        let existingContent = "";
+        try {
+            existingContent = fs.readFileSync(outputPath, "utf-8").trim();
+        } catch (err) {
+            // File doesn't exist yet, that's ok
+        }
+
+        const separator = existingContent ? "," : "";
+        fs.writeFileSync(
+            outputPath,
+            `${existingContent}${separator}${installedNames.join(",")}${
+                existingContent ? "" : "\n"
+            }`
+        );
+        console.log(`Installed package list written to ${outputPath}`);
+    } catch (e) {
+        console.error(`Error writing installed packages to ${outputPath}:`, e);
+    }
+}
+
+function installPackages(packages, extraArgs, azureArtifacts) {
+    const installedNames = []; // Track installed package names
 
     for (const pkg of packages) {
         console.log(`Installing package ${pkg.name}@${pkg.version}`);
 
         const packageJSONPath = path.join(pkg.path, "package.json");
-        const packageJSON = JSON.parse(fs.readFileSync(packageJSONPath, "utf-8"));
+        const packageJSON = JSON.parse(
+            fs.readFileSync(packageJSONPath, "utf-8")
+        );
         packageJSON.dependencies = {};
         packageJSON.version = pkg.version;
-        fs.writeFileSync(packageJSONPath, JSON.stringify(packageJSON, null, 2));
+        fs.writeFileSync(
+            packageJSONPath,
+            JSON.stringify(packageJSON, null, 2)
+        );
 
         try {
             execSync(
-                `cd ${pkg.path} && argopm install ${extraArgs} . --azure ${azureArtifacts}`,
-                { stdio: "inherit" }
+                `cd ${pkg.path} && argopm install ${extraArgs} . --azure ${azureArtifacts}`
             );
-            installedNames.push(pkg.name); // Track successfully installed package
+            installedNames.push(pkg.name);
         } catch (e) {
             console.error(`Error installing ${pkg.name}:`, e);
         }
     }
 
-    if (outputPath && installedNames.length > 0) {
-        const outFile = outputPath; 
-        try {
-            const outDir = path.dirname(outFile); 
-            fs.mkdirSync(outDir, { recursive: true }); 
-
-            let existingContent = '';
-            try {
-                existingContent = fs.readFileSync(outFile, 'utf-8').trim();
-            } catch (err) {
-                // File doesn't exist yet, that's ok
-            }
-            const separator = existingContent ? ',' : '';
-            fs.writeFileSync(outFile, `${existingContent}${separator}${installedNames.join(',')}${existingContent ? '' : '\n'}`);
-            console.log(`Installed package list written to ${outFile}`);
-        } catch (e) {
-            console.error(`Error writing installed packages to ${outputPath}:`, e); 
-        }
-    }
+    return installedNames; // Return the installed package names
 }
+
 
 async function run(
     marketplacePackagesPath,
@@ -90,13 +105,19 @@ async function run(
     const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
-        installPackages(numaflowPackages, extraArgs, azureArtifacts, outputPath);
+        const installed = installPackages(
+            numaflowPackages,
+            extraArgs,
+            azureArtifacts
+        );
+        writeInstalledPackagesToFile(installed, outputPath);
     }
 
     const argoPackages = [...packagesToInstall].filter((pkg) => !pkg.isNumaflowPackage);
     console.log("Argo packages to install: " + argoPackages.map((pkg) => pkg.name).join(", "));
 
-    installPackages(argoPackages, extraArgs, azureArtifacts, outputPath);
+    const installed = installPackages(argoPackages,extraArgs,azureArtifacts);
+    writeInstalledPackagesToFile(installed, outputPath);
 
     const filePath = `/tmp/atlan-update/${packageName.replace("/", "-")}-last-safe-run.txt`;
     const dirPath = path.dirname(filePath);
