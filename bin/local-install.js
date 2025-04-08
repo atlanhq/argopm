@@ -86,7 +86,7 @@ async function run(
                 .map((pkg) => pkg.name)
                 .join(", ")
     );
-
+    // Always install numaflow packages since delete-pipelines may have deleted them
     const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
