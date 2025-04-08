@@ -4,40 +4,44 @@ const execSync = require("child_process").execSync;
 const { getPackagesToInstall, getInstalledPackages, getAllPackagesMap } = require("../lib/local-install-util");
 
 function installPackages(packages, extraArgs, azureArtifacts, outputPath = "") {
-    // Install packages
+    const installedNames = []; // Track installed package names for output
+
     for (const pkg of packages) {
         console.log(`Installing package ${pkg.name}@${pkg.version}`);
 
-        // Change package.json file to remove all dependencies and write back
         const packageJSONPath = path.join(pkg.path, "package.json");
         const packageJSON = JSON.parse(fs.readFileSync(packageJSONPath, "utf-8"));
         packageJSON.dependencies = {};
         packageJSON.version = pkg.version;
-
-        // Write back package.json
         fs.writeFileSync(packageJSONPath, JSON.stringify(packageJSON, null, 2));
 
-        // Install package
         try {
             execSync(
                 `cd ${pkg.path} && argopm install ${extraArgs} . --azure ${azureArtifacts}`,
                 { stdio: "inherit" }
             );
+            installedNames.push(pkg.name); // Track successfully installed package
         } catch (e) {
             console.error(`Error installing ${pkg.name}:`, e);
         }
+    }
 
-        // Copy to output path if specified
-        if (outputPath) {
-            const destPath = path.join(outputPath, pkg.name);
-            fs.mkdirSync(destPath, { recursive: true });
-
+    if (outputPath && installedNames.length > 0) {
+        // If output path is provided, write all installed package names to a file
+        const outFile = path.join(outputPath, "installed-packages.txt"); // Consolidated output
+        try {
+            fs.mkdirSync(outputPath, { recursive: true }); // Ensure output directory exists
+            let existingContent = '';
             try {
-                execSync(`cp -r ${pkg.path}/* ${destPath}`);
-                console.log(`Copied package ${pkg.name} to ${destPath}`);
-            } catch (e) {
-                console.error(`Error copying ${pkg.name} to ${destPath}:`, e);
+                existingContent = fs.readFileSync(outFile, 'utf-8').trim();
+            } catch (err) {
+                // File doesn't exist yet, that's ok
             }
+            const separator = existingContent ? ',' : '';
+            fs.writeFileSync(outFile, `${existingContent}${separator}${installedNames.join(',')}${existingContent ? '' : '\n'}`);
+            console.log(`Installed package list written to ${outFile}`);
+        } catch (e) {
+            console.error(`Error writing installed packages to ${outFile}:`, e);
         }
     }
 }
@@ -63,14 +67,17 @@ async function run(
         skipVersionCheck,
         snapshotInstall
     );
+
     const skipPackagesArray = Array.from(
         JSON.parse(skipPackages)
             .map((item) => item.split(","))
             .flat()
     );
+
     const packagesToInstall = Array.from(initPackagesToInstall).filter(
         (item) => !skipPackagesArray.includes(item.name)
     );
+
     console.log("Packages skipped install: " + skipPackagesArray);
     console.log(
         "Packages to install: " +
@@ -79,20 +86,17 @@ async function run(
                 .join(", ")
     );
 
-    // Always install numaflow packages since delete-pipelines may have deleted them
     const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
         installPackages(numaflowPackages, extraArgs, azureArtifacts, outputPath);
     }
 
-    // Install packages
     const argoPackages = [...packagesToInstall].filter((pkg) => !pkg.isNumaflowPackage);
     console.log("Argo packages to install: " + argoPackages.map((pkg) => pkg.name).join(", "));
 
     installPackages(argoPackages, extraArgs, azureArtifacts, outputPath);
 
-    // Write last safe release
     const filePath = `/tmp/atlan-update/${packageName.replace("/", "-")}-last-safe-run.txt`;
     const dirPath = path.dirname(filePath);
     fs.mkdirSync(dirPath, { recursive: true });
@@ -110,7 +114,7 @@ const channel = process.argv[6];
 const snapshotInstallString = process.argv[7];
 const skipVersionCheckString = process.argv[8];
 const skipPackagesString = process.argv[9];
-const outputPath = process.argv[10] || "";
+const outputPath = process.argv[10] || ""; // Optional output path for installed package list
 
 const snapshotInstall = snapshotInstallString === "true";
 const skipVersionCheck = skipVersionCheckString === "true";
