@@ -21,9 +21,7 @@ function writeInstalledPackagesToFile(installedNames, outputPath) {
         const separator = existingContent ? "," : "";
         fs.writeFileSync(
             outputPath,
-            `${existingContent}${separator}${installedNames.join(",")}${
-                existingContent ? "" : "\n"
-            }`
+            `${existingContent}${separator}${installedNames.join(",")}`
         );
         console.log(`Installed package list written to ${outputPath}`);
     } catch (e) {
