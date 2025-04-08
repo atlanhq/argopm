@@ -27,10 +27,11 @@ function installPackages(packages, extraArgs, azureArtifacts, outputPath = "") {
     }
 
     if (outputPath && installedNames.length > 0) {
-        // If output path is provided, write all installed package names to a file
-        const outFile = path.join(outputPath, "installed-packages.txt"); // Consolidated output
+        const outFile = outputPath; 
         try {
-            fs.mkdirSync(outputPath, { recursive: true }); // Ensure output directory exists
+            const outDir = path.dirname(outFile); 
+            fs.mkdirSync(outDir, { recursive: true }); 
+
             let existingContent = '';
             try {
                 existingContent = fs.readFileSync(outFile, 'utf-8').trim();
@@ -41,7 +42,7 @@ function installPackages(packages, extraArgs, azureArtifacts, outputPath = "") {
             fs.writeFileSync(outFile, `${existingContent}${separator}${installedNames.join(',')}${existingContent ? '' : '\n'}`);
             console.log(`Installed package list written to ${outFile}`);
         } catch (e) {
-            console.error(`Error writing installed packages to ${outFile}:`, e);
+            console.error(`Error writing installed packages to ${outputPath}:`, e); 
         }
     }
 }
