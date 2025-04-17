@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - gau-test
 jobs:
   npm-publish:
     name: npm-publish
