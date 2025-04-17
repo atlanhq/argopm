@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - version-fix
 jobs:
   npm-publish:
     name: npm-publish
