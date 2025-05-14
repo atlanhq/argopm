@@ -1,5 +1,7 @@
 const { exit } = require("process");
 const fs = require("fs");
+const path = require("path");
+const execSync = require("child_process").execSync;
 const {
     getAllRunningPackages,
     getPackagesToInstall,
@@ -70,6 +72,17 @@ async function run(marketplacePackagesPath, packageName, snapshotInstall, skipVe
     }
     console.log("Safe to install: " + safeToInstall);
 
+    console.log("Installing numaflow pipelines immediately.");
+
+    const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
+    
+    console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
+    installPackages(
+        numaflowPackages,
+        extraArgs,
+        azureArtifacts
+    );
+    
     if (!safeToInstall) {
         console.warn("Not safe to install. Waiting for running workflows to complete before installing packages.");
         // use custom exit code 100 to bypass workflow failure
@@ -78,10 +91,42 @@ async function run(marketplacePackagesPath, packageName, snapshotInstall, skipVe
     }
 }
 
+function installPackages(packages, extraArgs, azureArtifacts) {
+    const installedNames = []; // Track installed package names
+
+    for (const pkg of packages) {
+        console.log(`Installing package ${pkg.name}@${pkg.version}`);
+
+        const packageJSONPath = path.join(pkg.path, "package.json");
+        const packageJSON = JSON.parse(
+            fs.readFileSync(packageJSONPath, "utf-8")
+        );
+        packageJSON.dependencies = {};
+        packageJSON.version = pkg.version;
+        fs.writeFileSync(
+            packageJSONPath,
+            JSON.stringify(packageJSON, null, 2)
+        );
+
+        try {
+            execSync(
+                `cd ${pkg.path} && argopm install ${extraArgs} . --azure ${azureArtifacts}`
+            );
+            installedNames.push(pkg.name);
+        } catch (e) {
+            console.error(`Error installing ${pkg.name}:`, e);
+        }
+    }
+
+    return installedNames; // Return the installed package names
+}
+
 const marketplacePackagesPath = process.argv[2];
 const packageName = process.argv[3];
-const snapshotInstallString = process.argv[4];
-const skipVersionCheckString = process.argv[5];
+const azureArtifacts = process.argv[4];
+const extraArgs = process.argv[5];
+const snapshotInstallString = process.argv[6];
+const skipVersionCheckString = process.argv[7];
 const snapshotInstall = snapshotInstallString === "true";
 const skipVersionCheck = skipVersionCheckString === "true";
 
