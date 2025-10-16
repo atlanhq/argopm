@@ -29,8 +29,24 @@ function writeInstalledPackagesToFile(installedNames, outputPath) {
     }
 }
 
+// Helper function to write failed package count to file
+function writeFailedPackageCount(failedCount, outputPath) {
+    if (!outputPath) return;
+
+    try {
+        const outDir = path.dirname(outputPath);
+        fs.mkdirSync(outDir, { recursive: true });
+
+        fs.writeFileSync(outputPath, failedCount.toString());
+        console.log(`Failed package count written to ${outputPath}`);
+    } catch (e) {
+        console.error(`Error writing failed package count:`, e);
+    }
+}
+
 function installPackages(packages, extraArgs, azureArtifacts) {
     const installedNames = []; // Track installed package names
+    let failedCount = 0; // Track number of failed installations
 
     for (const pkg of packages) {
         console.log(`Installing package ${pkg.name}@${pkg.version}`);
@@ -53,10 +69,11 @@ function installPackages(packages, extraArgs, azureArtifacts) {
             installedNames.push(pkg.name);
         } catch (e) {
             console.error(`Error installing ${pkg.name}:`, e);
+            failedCount++;
         }
     }
 
-    return installedNames; // Return the installed package names
+    return { installedNames, failedCount }; // Return both installed names and failed count
 }
 
 
@@ -101,21 +118,29 @@ async function run(
     );
     // Always install numaflow packages since delete-pipelines may have deleted them
     const numaflowPackages = [...packagesToInstall].filter((pkg) => pkg.isNumaflowPackage);
+    let totalFailedCount = 0;
+    
     if (packageName != "@atlan/cloud-packages") {
         console.log("Numaflow packages to install: " + numaflowPackages.map((pkg) => pkg.name).join(", "));
-        const installed = installPackages(
+        const numaflowResult = installPackages(
             numaflowPackages,
             extraArgs,
             azureArtifacts
         );
-        writeInstalledPackagesToFile(installed, outputPath);
+        writeInstalledPackagesToFile(numaflowResult.installedNames, outputPath);
+        totalFailedCount += numaflowResult.failedCount;
     }
 
     const argoPackages = [...packagesToInstall].filter((pkg) => !pkg.isNumaflowPackage);
     console.log("Argo packages to install: " + argoPackages.map((pkg) => pkg.name).join(", "));
 
-    const installed = installPackages(argoPackages,extraArgs,azureArtifacts);
-    writeInstalledPackagesToFile(installed, outputPath);
+    const argoResult = installPackages(argoPackages,extraArgs,azureArtifacts);
+    writeInstalledPackagesToFile(argoResult.installedNames, outputPath);
+    totalFailedCount += argoResult.failedCount;
+    
+    // Write total failure count once at the end
+    const failedInstallPath = `/tmp/failed-install-count.txt`;
+    writeFailedPackageCount(totalFailedCount, failedInstallPath);
 
     const filePath = `/tmp/atlan-update/${packageName.replace("/", "-")}-last-safe-run.txt`;
     const dirPath = path.dirname(filePath);
