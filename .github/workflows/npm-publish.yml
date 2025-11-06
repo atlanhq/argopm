@@ -49,8 +49,8 @@ jobs:
           push: true
           tags: |
             ghcr.io/atlanhq/${{ github.event.repository.name }}:latest
-            ghcr.io/atlanhq/${{ github.event.repository.name }}:v${{ steps.get_version.outputs.published_version }}
+            ghcr.io/atlanhq/${{ github.event.repository.name }}:v${{ steps.get_version.outputs.argopm_version }}
           build-args: |
             ACCESS_TOKEN_USR=$GITHUB_ACTOR
             ACCESS_TOKEN_PWD=${{ secrets.ORG_PAT_GITHUB }}
-            ARGOPM_VERSION=${{ steps.get_version.outputs.published_version }}
+            ARGOPM_VERSION=${{ steps.get_version.outputs.argopm_version }}
