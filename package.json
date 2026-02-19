@@ -22,7 +22,7 @@
     "dotenv": "^10.0.0",
     "js-yaml": "^4.1.0",
     "npm-package-arg": "^8.1.5",
-    "rimraf": "^6.1.0",
+    "rimraf": "^6.1.1",
     "stream-buffers": "^3.0.3",
     "system-commands": "^1.1.7",
     "yargs": "^17.7.2",
