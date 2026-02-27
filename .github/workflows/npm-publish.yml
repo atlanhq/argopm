@@ -26,13 +26,13 @@ jobs:
         run: npm install -g npm@latest
       - name: Publish to npm
         run: npm publish --provenance --access public
-      - name: Get published version
+      - name: Get package version
         id: get_version
         run: |
-          ARGOPM_VERSION=$(npm show . version)
-          echo "The published version is: $ARGOPM_VERSION"
+          ARGOPM_VERSION=$(node -p "require('./package.json').version")
+          echo "The package version is: $ARGOPM_VERSION"
           echo "argopm_version=$ARGOPM_VERSION" >> "$GITHUB_OUTPUT"
-          # sleep 5 sec to make sure we can install the latest published version from npm in Dockerfile
+          # sleep 5 sec to make sure the npm registry has synced the published version
           sleep 5
       - run: echo "REPOSITORY_NAME=`echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//"`" >> $GITHUB_ENV
         shell: bash
