@@ -25,7 +25,14 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: |
+          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view argopm version 2>/dev/null || echo "")
+          if [ "$LOCAL_VERSION" = "$PUBLISHED_VERSION" ]; then
+            echo "Version $LOCAL_VERSION already published, skipping."
+          else
+            npm publish --provenance --access public
+          fi
       - name: Get package version
         id: get_version
         run: |
