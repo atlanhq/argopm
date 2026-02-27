@@ -1,6 +1,6 @@
 {
   "name": "argopm",
-  "version": "0.10.30",
+  "version": "0.11.3",
   "description": "Argo package manager",
   "main": "./lib/index.js",
   "scripts": {
@@ -11,8 +11,12 @@
   },
   "author": "engineering@atlan.com",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atlanhq/argopm.git"
+  },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.637.0",
+    "@aws-sdk/client-s3": "^3.998.0",
     "@kubernetes/client-node": "^1.2.0",
     "ansicolor": "^1.1.95",
     "as-table": "^1.0.55",

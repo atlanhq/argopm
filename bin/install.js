@@ -193,7 +193,7 @@ yargs
         alias: "r",
         type: "string",
         description: "Argo Package Registry",
-        default: "https://packages.atlan.com",
+        default: "",
     })
     .option("cluster", {
         alias: "c",
