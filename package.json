@@ -24,7 +24,7 @@
     "bluebird": "^3.7.2",
     "compare-versions": "^4.1.2",
     "dotenv": "^10.0.0",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "npm-package-arg": "^8.1.5",
     "rimraf": "^6.1.0",
     "stream-buffers": "^3.0.3",
