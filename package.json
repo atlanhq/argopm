@@ -20,7 +20,7 @@
     "@kubernetes/client-node": "^1.2.0",
     "ansicolor": "^1.1.95",
     "as-table": "^1.0.55",
-    "axios": "^0.30.2",
+    "axios": "^1.13.2",
     "bluebird": "^3.7.2",
     "compare-versions": "^4.1.2",
     "dotenv": "^10.0.0",
