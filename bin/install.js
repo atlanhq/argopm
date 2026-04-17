@@ -192,7 +192,7 @@ yargs
     .option("registry", {
         alias: "r",
         type: "string",
-        description: "Argo Package Registry",
+        description: "Deprecated no-op. Retained for backward compatibility. argopm only performs local installs.",
         default: "",
     })
     .option("cluster", {
