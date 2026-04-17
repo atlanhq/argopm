@@ -98,7 +98,7 @@ Commands:
 Options:
       --version    Show version number                                                                                                 [boolean]
   -n, --namespace  Kubernetes namespace. Packages will be installed in this namespace                                 [string] [default: "argo"]
-  -r, --registry   Argo Package Registry                                                        [string] [default: "https://packages.atlan.com"]
+  -r, --registry   Deprecated no-op. Retained for backward compatibility. argopm only performs local installs.    [string] [default: ""]
   -c, --cluster    Install the template at cluster level                                                              [boolean] [default: false]
       --help       Show help                                                                                                           [boolean]
 ```
