@@ -19,6 +19,6 @@ permissions:
 
 jobs:
   cooldown:
-    uses: atlanhq/.github/.github/workflows/reusable-dep-cooldown.yml@97063f1c0966f11422a1c7d7d5c0deb40abf1291 # 2026-04-29 hardened
+    uses: atlanhq/.github/.github/workflows/reusable-dep-cooldown.yml@main
     with:
       min-age-days: 7
