@@ -8,9 +8,10 @@ name: dep-cooldown
 # reusable workflow in atlanhq/.github and bump the SHA below.
 
 on:
+  # Trigger on every PR regardless of base branch. Some repos use master /
+  # staging / develop as default; hardcoding 'main' would silently skip them.
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
-    branches: [main]
 
 permissions:
   contents: read
