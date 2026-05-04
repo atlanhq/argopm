@@ -1,0 +1,27 @@
+name: dep-cooldown
+
+# Calls the org-shared cooldown checker in atlanhq/.github (PR #31, hardened in #33).
+# Fails the PR if any newly-introduced dependency version is younger than 7 days.
+# Bypass: add the 'security' label to the PR (use only for urgent CVE patches).
+#
+# This file is uniform across every repo. To change policy, edit the
+# reusable workflow in atlanhq/.github and bump the SHA below.
+
+on:
+  # Trigger on every PR regardless of base branch. Some repos use master /
+  # staging / develop as default; hardcoding 'main' would silently skip them.
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  cooldown:
+    uses: atlanhq/.github/.github/workflows/reusable-dep-cooldown.yml@main
+    with:
+      min-age-days: 7
+    # Forwards the org-level SLACK_DEP_COOLDOWN_WEBHOOK secret to the reusable
+    # workflow so it can post failure alerts to #community-security.
+    secrets: inherit
