@@ -22,3 +22,6 @@ jobs:
     uses: atlanhq/.github/.github/workflows/reusable-dep-cooldown.yml@main
     with:
       min-age-days: 7
+    # Forwards the org-level SLACK_DEP_COOLDOWN_WEBHOOK secret to the reusable
+    # workflow so it can post failure alerts to #community-security.
+    secrets: inherit
