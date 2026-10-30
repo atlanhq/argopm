@@ -77,3 +77,81 @@ describe("copyPackageInfoToPodMetaData", () => {
         expect(result.spec.podMetadata).toBeUndefined();
     });
 });
+
+describe("keepArgoOffHold", () => {
+    const keepArgoOffHold = k8s.__get__("keepArgoOffHold");
+    const Resource = require("../lib/models/resource");
+    const HOLD = "atlan.com/suspended-by-argo-off";
+
+    const live = (annotations, suspend) =>
+        new Resource({
+            kind: "CronWorkflow",
+            metadata: { name: "nightly", labels: { "package.argoproj.io/version": "1.0.0" }, annotations },
+            spec: { schedule: "0 0 * * *", suspend },
+        });
+    const pkg = () => ({
+        kind: "CronWorkflow",
+        metadata: { name: "nightly", labels: { "package.argoproj.io/version": "1.0.1" } },
+        spec: { schedule: "0 1 * * *", suspend: false },
+    });
+
+    test("keeps a held cron suspended", () => {
+        const obj = pkg();
+        expect(keepArgoOffHold(live({ [HOLD]: "true" }, true), obj)).toBe(true);
+        expect(obj.spec.suspend).toBe(true);
+        expect(obj.spec.schedule).toBe("0 1 * * *");
+    });
+
+    test("leaves an unmarked cron as the package has it", () => {
+        const obj = pkg();
+        expect(keepArgoOffHold(live({}, true), obj)).toBe(false);
+        expect(obj.spec.suspend).toBe(false);
+    });
+
+    test("leaves a marked cron that is running as the package has it", () => {
+        const obj = pkg();
+        expect(keepArgoOffHold(live({ [HOLD]: "true" }, false), obj)).toBe(false);
+        expect(obj.spec.suspend).toBe(false);
+    });
+
+    test("ignores other kinds", () => {
+        const obj = { ...pkg(), kind: "WorkflowTemplate" };
+        expect(keepArgoOffHold(live({ [HOLD]: "true" }, true), obj)).toBe(false);
+    });
+
+    test("a forced package update keeps the hold in the patch it sends", async () => {
+        const K8sInstaller = k8s.__get__("K8sInstaller");
+        const sent = [];
+        const restore = k8s.__set__("K8sInstaller.patchCustomResource", (name, ns, plural, body) => {
+            sent.push(body);
+            return Promise.resolve(body);
+        });
+        try {
+            const items = [
+                {
+                    kind: "CronWorkflow",
+                    metadata: {
+                        name: "nightly",
+                        labels: { "package.argoproj.io/version": "1.0.1" },
+                        annotations: { [HOLD]: "true" },
+                    },
+                    spec: { schedule: "0 0 * * *", suspend: true },
+                },
+            ];
+            await K8sInstaller.handleUpsertWithTemplateResponse(
+                { items },
+                "default",
+                "cronworkflows",
+                pkg(),
+                false,
+                "argoproj.io",
+                true
+            );
+            expect(sent).toHaveLength(1);
+            expect(sent[0].spec.suspend).toBe(true);
+            expect(sent[0].spec.schedule).toBe("0 1 * * *");
+        } finally {
+            restore();
+        }
+    });
+});
