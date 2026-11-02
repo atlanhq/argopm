@@ -155,3 +155,95 @@ describe("keepArgoOffHold", () => {
         }
     });
 });
+
+describe("clearStaleArgoOffMark", () => {
+    const clearStaleArgoOffMark = k8s.__get__("clearStaleArgoOffMark");
+    const Resource = require("../lib/models/resource");
+    const HOLD = "atlan.com/suspended-by-argo-off";
+
+    const live = (annotations, suspend) =>
+        new Resource({
+            kind: "CronWorkflow",
+            metadata: { name: "nightly", labels: { "package.argoproj.io/version": "1.0.0" }, annotations },
+            spec: { schedule: "0 0 * * *", suspend },
+        });
+    const pkg = (suspend = false) => ({
+        kind: "CronWorkflow",
+        metadata: { name: "nightly", labels: { "package.argoproj.io/version": "1.0.1" } },
+        spec: { schedule: "0 1 * * *", suspend },
+    });
+
+    test("removes the mark from a cron that was resumed", () => {
+        const obj = pkg();
+        expect(clearStaleArgoOffMark(live({ [HOLD]: "true" }, false), obj)).toBe(true);
+        expect(obj.metadata.annotations[HOLD]).toBeNull();
+    });
+
+    test("treats a cron with no suspend field as resumed", () => {
+        const obj = pkg();
+        expect(clearStaleArgoOffMark(live({ [HOLD]: "true" }, undefined), obj)).toBe(true);
+    });
+
+    test("keeps the mark on a cron that is still held", () => {
+        const obj = pkg();
+        expect(clearStaleArgoOffMark(live({ [HOLD]: "true" }, true), obj)).toBe(false);
+        expect(obj.metadata.annotations).toBeUndefined();
+    });
+
+    test("leaves an unmarked cron alone", () => {
+        const obj = pkg();
+        expect(clearStaleArgoOffMark(live({}, false), obj)).toBe(false);
+        expect(obj.metadata.annotations).toBeUndefined();
+    });
+
+    test("ignores other kinds", () => {
+        const obj = { ...pkg(), kind: "WorkflowTemplate" };
+        expect(clearStaleArgoOffMark(live({ [HOLD]: "true" }, false), obj)).toBe(false);
+    });
+
+    const upsert = async (liveCron, pkgObj) => {
+        const K8sInstaller = k8s.__get__("K8sInstaller");
+        const sent = [];
+        const restore = k8s.__set__("K8sInstaller.patchCustomResource", (name, ns, plural, body) => {
+            sent.push(body);
+            return Promise.resolve(body);
+        });
+        try {
+            await K8sInstaller.handleUpsertWithTemplateResponse(
+                { items: [liveCron] },
+                "default",
+                "cronworkflows",
+                pkgObj,
+                false,
+                "argoproj.io",
+                true
+            );
+        } finally {
+            restore();
+        }
+        return sent;
+    };
+    const liveCron = (suspend) => ({
+        kind: "CronWorkflow",
+        metadata: {
+            name: "nightly",
+            labels: { "package.argoproj.io/version": "1.0.1" },
+            annotations: { [HOLD]: "true" },
+        },
+        spec: { schedule: "0 0 * * *", suspend },
+    });
+
+    test("a forced update of a resumed cron sends the package's suspend and deletes the mark", async () => {
+        const sent = await upsert(liveCron(false), pkg(false));
+        expect(sent).toHaveLength(1);
+        expect(sent[0].spec.suspend).toBe(false);
+        expect(sent[0].metadata.annotations[HOLD]).toBeNull();
+    });
+
+    test("a forced update of a held cron keeps both the hold and the mark", async () => {
+        const sent = await upsert(liveCron(true), pkg(false));
+        expect(sent).toHaveLength(1);
+        expect(sent[0].spec.suspend).toBe(true);
+        expect((sent[0].metadata.annotations || {})[HOLD]).not.toBeNull();
+    });
+});
