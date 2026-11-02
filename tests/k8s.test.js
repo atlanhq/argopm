@@ -3,6 +3,11 @@ const fs = require("fs");
 const rewire = require("rewire");
 
 const k8s = rewire("../lib/k8s.js");
+
+// No tenant overrides unless a test sets them.
+k8s.__get__("coreK8sApi").readNamespacedConfigMap = () =>
+    Promise.reject(Object.assign(new Error("not found"), { code: 404 }));
+beforeEach(() => k8s.__get__("cronOverridesByNamespace").clear());
 const enableClusterScope = k8s.__get__("enableClusterScope");
 const copyLabelsToPodMetaData = k8s.__get__("copyPackageInfoToPodMetaData");
 
@@ -245,5 +250,207 @@ describe("clearStaleArgoOffMark", () => {
         expect(sent).toHaveLength(1);
         expect(sent[0].spec.suspend).toBe(true);
         expect((sent[0].metadata.annotations || {})[HOLD]).not.toBeNull();
+    });
+});
+
+describe("tenant CronWorkflow overrides", () => {
+    const HOLD = "atlan.com/suspended-by-argo-off";
+    const parseCronOverrides = k8s.__get__("parseCronOverrides");
+    const cronOverrides = k8s.__get__("cronOverrides");
+
+    const withConfigMap = (read) => {
+        const calls = [];
+        const api = k8s.__get__("coreK8sApi");
+        const original = api.readNamespacedConfigMap;
+        api.readNamespacedConfigMap = (args) => {
+            calls.push(args);
+            return read(args);
+        };
+        k8s.__get__("cronOverridesByNamespace").clear();
+        return {
+            calls,
+            restore: () => {
+                api.readNamespacedConfigMap = original;
+                k8s.__get__("cronOverridesByNamespace").clear();
+            },
+        };
+    };
+    const pkg = (suspend = false) => ({
+        kind: "CronWorkflow",
+        metadata: { name: "nightly", labels: { "package.argoproj.io/version": "1.0.1" } },
+        spec: { schedule: "0 1 * * *", suspend },
+    });
+    const liveCron = (suspend, annotations = {}) => ({
+        kind: "CronWorkflow",
+        metadata: { name: "nightly", labels: { "package.argoproj.io/version": "1.0.1" }, annotations },
+        spec: { schedule: "0 0 * * *", suspend },
+    });
+    const upsert = async (items, pkgObj) => {
+        const K8sInstaller = k8s.__get__("K8sInstaller");
+        const sent = [];
+        const restorePatch = k8s.__set__("K8sInstaller.patchCustomResource", (name, ns, plural, body) => {
+            sent.push({ op: "patch", body });
+            return Promise.resolve(body);
+        });
+        const restoreCreate = k8s.__set__("K8sInstaller.createCustomResource", (ns, plural, body) => {
+            sent.push({ op: "create", body });
+            return Promise.resolve(body);
+        });
+        try {
+            await K8sInstaller.handleUpsertWithTemplateResponse(
+                { items },
+                "default",
+                "cronworkflows",
+                pkgObj,
+                false,
+                "argoproj.io",
+                true
+            );
+        } finally {
+            restorePatch();
+            restoreCreate();
+        }
+        return sent;
+    };
+
+    test("parses hold and run, and drops anything else", () => {
+        expect(parseCronOverrides({ a: "hold", b: "run", c: "true", d: "", e: "constructor" })).toEqual({
+            a: true,
+            b: false,
+        });
+    });
+
+    test("reads the ConfigMap once per namespace", async () => {
+        const cm = withConfigMap(() => Promise.resolve({ data: { nightly: "hold" } }));
+        try {
+            expect(await cronOverrides("default")).toEqual({ nightly: true });
+            expect(await cronOverrides("default")).toEqual({ nightly: true });
+            expect(cm.calls).toEqual([{ name: "atlan-cron-overrides", namespace: "default" }]);
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("a missing ConfigMap means no overrides", async () => {
+        const cm = withConfigMap(() => Promise.reject(Object.assign(new Error("not found"), { code: 404 })));
+        try {
+            expect(await cronOverrides("default")).toEqual({});
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("a failed read is reported as unknown, not as no overrides", async () => {
+        const cm = withConfigMap(() => Promise.reject(Object.assign(new Error("forbidden"), { code: 403 })));
+        try {
+            expect(await cronOverrides("default")).toBeNull();
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("a failed read leaves crons untouched for the run", async () => {
+        const cm = withConfigMap(() => Promise.reject(Object.assign(new Error("timeout"), { code: 504 })));
+        try {
+            expect(await upsert([liveCron(true)], pkg(false))).toHaveLength(0);
+            expect(await upsert([], pkg(false))).toHaveLength(0);
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("an empty ConfigMap means no overrides", async () => {
+        const cm = withConfigMap(() => Promise.resolve({}));
+        try {
+            expect(await cronOverrides("default")).toEqual({});
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("hold suspends a running cron the package turns on", async () => {
+        const cm = withConfigMap(() => Promise.resolve({ data: { nightly: "hold" } }));
+        try {
+            const sent = await upsert([liveCron(false)], pkg(false));
+            expect(sent).toHaveLength(1);
+            expect(sent[0].op).toBe("patch");
+            expect(sent[0].body.spec.suspend).toBe(true);
+            expect(sent[0].body.spec.schedule).toBe("0 1 * * *");
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("run releases an Argo-off hold", async () => {
+        const cm = withConfigMap(() => Promise.resolve({ data: { nightly: "run" } }));
+        try {
+            const sent = await upsert([liveCron(true, { [HOLD]: "true" })], pkg(false));
+            expect(sent[0].body.spec.suspend).toBe(false);
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("hold on a held cron keeps the mark, so removing the override keeps the Argo-off hold", async () => {
+        const cm = withConfigMap(() => Promise.resolve({ data: { nightly: "hold" } }));
+        try {
+            const sent = await upsert([liveCron(true, { [HOLD]: "true" })], pkg(false));
+            expect(sent[0].body.spec.suspend).toBe(true);
+            expect((sent[0].body.metadata.annotations || {})[HOLD]).not.toBeNull();
+        } finally {
+            cm.restore();
+        }
+        const after = withConfigMap(() => Promise.resolve({ data: {} }));
+        try {
+            const sent = await upsert([liveCron(true, { [HOLD]: "true" })], pkg(false));
+            expect(sent[0].body.spec.suspend).toBe(true);
+        } finally {
+            after.restore();
+        }
+    });
+
+    test("run turns on a cron the package suspends", async () => {
+        const cm = withConfigMap(() => Promise.resolve({ data: { nightly: "run" } }));
+        try {
+            const sent = await upsert([liveCron(true)], pkg(true));
+            expect(sent[0].body.spec.suspend).toBe(false);
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("a new cron is created with its override", async () => {
+        const cm = withConfigMap(() => Promise.resolve({ data: { nightly: "hold" } }));
+        try {
+            const sent = await upsert([], pkg(false));
+            expect(sent).toEqual([expect.objectContaining({ op: "create" })]);
+            expect(sent[0].body.spec.suspend).toBe(true);
+            expect(sent[0].body.metadata.annotations).toBeUndefined();
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("a cron with no entry keeps the package value and the Argo-off hold", async () => {
+        const cm = withConfigMap(() => Promise.resolve({ data: { other: "run" } }));
+        try {
+            const sent = await upsert([liveCron(true, { [HOLD]: "true" })], pkg(false));
+            expect(sent[0].body.spec.suspend).toBe(true);
+            expect((sent[0].body.metadata.annotations || {})[HOLD]).not.toBeNull();
+        } finally {
+            cm.restore();
+        }
+    });
+
+    test("other kinds never read the ConfigMap", async () => {
+        const cm = withConfigMap(() => Promise.resolve({ data: { nightly: "hold" } }));
+        try {
+            const obj = { ...pkg(), kind: "WorkflowTemplate" };
+            const sent = await upsert([], obj);
+            expect(cm.calls).toHaveLength(0);
+            expect(sent[0].body.spec.suspend).toBe(false);
+        } finally {
+            cm.restore();
+        }
     });
 });
